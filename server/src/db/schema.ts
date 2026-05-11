@@ -106,9 +106,8 @@ export const answersTable = pgTable(
     questionId: uuid("question_id")
       .notNull()
       .references(() => questionsTable.id, { onDelete: "cascade" }),
-    optionId: uuid("option_id")
-      .notNull()
-      .references(() => optionsTable.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id"),
+    value: text("value"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
