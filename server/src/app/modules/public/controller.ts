@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { eq, and, inArray } from "pg-core";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import {
   pollsTable,
@@ -10,8 +10,10 @@ import {
 } from "../../../db/schema.js";
 import { SubmitResponseSchema } from "./models.js";
 
+// Get poll details
 export async function getPublicPoll(req: Request, res: Response) {
-  const { shareId } = req.params;
+  const shareIdRaw = req.params.shareId;
+  const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
   if (!shareId) return res.status(400).json({ message: "Share ID required" });
 
   const [poll] = await db
@@ -63,8 +65,10 @@ export async function getPublicPoll(req: Request, res: Response) {
   });
 }
 
+// Submit poll response
 export async function submitResponse(req: Request, res: Response) {
-  const { shareId } = req.params;
+  const shareIdRaw = req.params.shareId;
+  const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
   if (!shareId) return res.status(400).json({ message: "Share ID required" });
 
   const parsed = SubmitResponseSchema.safeParse(req.body);
