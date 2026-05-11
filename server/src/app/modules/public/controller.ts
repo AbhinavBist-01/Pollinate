@@ -9,6 +9,7 @@ import {
   answersTable,
 } from "../../../db/schema.js";
 import { SubmitResponseSchema } from "./models.js";
+import { emitResponseNew } from "../socket/index.js";
 
 // Get poll details
 export async function getPublicPoll(req: Request, res: Response) {
@@ -156,6 +157,8 @@ export async function submitResponse(req: Request, res: Response) {
       value: a.value ?? null,
     });
   }
+
+  emitResponseNew(poll.id);
 
   return res
     .status(201)
