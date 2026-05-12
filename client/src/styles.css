@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --color-honey: #F59E0B;
+  --color-orange: #FB923C;
+  --color-charcoal: #18181B;
+  --color-cream: #FFF7ED;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { min-height: 100%; }
+body { margin: 0; background: var(--color-cream); color: var(--color-charcoal); }
+
+@theme {
+  --color-honey: #F59E0B;
+  --color-orange: #FB923C;
+  --color-charcoal: #18181B;
+  --color-cream: #FFF7ED;
+}

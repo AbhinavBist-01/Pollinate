@@ -21,7 +21,7 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(morgan("dev"));
 
-  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
   app.use("/api/auth", authRouter);
   app.use("/api/polls", pollRouter);

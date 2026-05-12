@@ -6,7 +6,7 @@ import { db } from "../../../db/index.js";
 import { usersTable } from "../../../db/schema.js";
 import { RegisterSchema, LoginSchema } from "./models.js";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET = process.env.JWT_SECRET || "pollinate-jwt-secret-dev";
 
 // Register a new user
 export async function register(req: Request, res: Response) {
