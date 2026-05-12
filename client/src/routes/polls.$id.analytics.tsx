@@ -2,12 +2,11 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import api, { getToken } from '../lib/api'
 import { socket, joinPollRoom, onResponseNew, offResponseNew } from '../lib/socket'
+import { Card } from '../components/ui'
 
 export const Route = createFileRoute('/polls/$id/analytics')({
   component: Analytics,
-  beforeLoad: () => {
-    if (!getToken()) throw redirect({ to: '/login' })
-  },
+  beforeLoad: () => { if (!getToken()) throw redirect({ to: '/login' }) },
 })
 
 function Analytics() {
@@ -15,62 +14,61 @@ function Analytics() {
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
-    api.get(`/api/polls/${id}/analytics`).then((res) => setData(res.data))
+    api.get(`/api/polls/${id}/analytics`).then((r) => setData(r.data))
     if (!socket.connected) socket.connect()
     joinPollRoom(id)
-    const handler = () => { api.get(`/api/polls/${id}/analytics`).then((res) => setData(res.data)) }
+    const handler = () => { api.get(`/api/polls/${id}/analytics`).then((r) => setData(r.data)) }
     onResponseNew(handler)
     return () => { offResponseNew(handler) }
   }, [id])
 
-  if (!data) return <p>Loading...</p>
+  if (!data) return <p className="text-center py-20 text-text/40">Loading...</p>
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold" style={{ color: '#18181B' }}>Analytics</h1>
-      <p className="text-lg">Total responses: <strong>{data.totalResponses}</strong></p>
-
-      <div className="rounded p-4" style={{ border: '1px solid #F59E0B' }}>
-        <h2 className="font-semibold mb-2">Responses Over Time</h2>
-        {data.responsesOverTime?.length === 0 && <p className="text-sm" style={{ color: '#FB923C' }}>No responses yet</p>}
-        <div className="space-y-1">
-          {data.responsesOverTime?.map((r: any) => (
-            <div key={r.date} className="flex items-center gap-2 text-sm">
-              <span className="w-24">{r.date}</span>
-              <div className="flex-1 rounded h-4" style={{ background: '#FFF7ED' }}>
-                <div className="h-4 rounded" style={{ width: `${Math.min((r.count / data.totalResponses) * 100, 100)}%`, background: '#FB923C' }} />
-              </div>
-              <span>{r.count}</span>
-            </div>
-          ))}
-        </div>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold text-text">{data.title || 'Analytics'}</h1>
+        <p className="text-sm text-accent mt-1">Real-time poll performance</p>
       </div>
 
-      <div className="space-y-3">
-        {data.questionBreakdown?.map((q: any) => (
-          <div key={q.questionId} className="rounded p-4" style={{ border: '1px solid #F59E0B', background: '#FFF7ED' }}>
-            <p className="font-medium mb-2">
-              {q.questionText} <span className="text-sm" style={{ color: '#FB923C' }}>({q.responseCount ?? q.options?.reduce((a: number, o: any) => a + o.count, 0)} responses)</span>
-            </p>
-            {q.type === 'text' ? (
-              q.answers?.map((a: string, i: number) => <p key={i} className="text-sm p-1 rounded">- {a}</p>)
-            ) : (
-              q.options?.map((o: any) => (
-                <div key={o.optionId} className="flex items-center gap-2 text-sm ml-2">
-                  <span className="w-40 truncate">{o.text}</span>
-                  <div className="flex-1 rounded h-4" style={{ background: '#FFF7ED' }}>
-                    <div className="h-4 rounded" style={{
-                      width: `${(o.count / Math.max(1, q.options?.reduce((a: number, o2: any) => a + o2.count, 0))) * 100}%`,
-                      background: '#F59E0B'
-                    }} />
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="rounded-xl p-5 text-center">
+          <p className="text-3xl font-bold text-primary">{data.totalResponses}</p>
+          <p className="text-xs text-text/50 mt-1">Total Responses</p>
+        </Card>
+        <Card className="rounded-xl p-5 text-center">
+          <p className="text-3xl font-bold text-accent">{data.completionRate ?? 100}%</p>
+          <p className="text-xs text-text/50 mt-1">Completion Rate</p>
+        </Card>
+        <Card className="rounded-xl p-5 text-center">
+          <p className="text-3xl font-bold text-text">{data.responsesOverTime?.length ?? 0}</p>
+          <p className="text-xs text-text/50 mt-1">Active Days</p>
+        </Card>
+      </div>
+
+      <Card className="rounded-xl">
+        <h2 className="font-semibold text-text mb-4">Responses Over Time</h2>
+        {data.responsesOverTime?.length === 0 ? (
+          <p className="text-sm text-text/40 italic">No responses yet. Share your poll to start collecting data.</p>
+        ) : (
+          <div className="space-y-2">
+            {data.responsesOverTime?.map((r: any) => {
+              const maxCount = Math.max(...data.responsesOverTime.map((x: any) => x.count))
+              return (
+                <div key={r.date}>
+                  <div className="flex justify-between text-sm mb-0.5">
+                    <span className="text-text/60">{r.date}</span>
+                    <span className="font-medium text-text">{r.count}</span>
                   </div>
-                  <span className="w-8 text-right">{o.count}</span>
+                  <div className="h-3 rounded-full bg-panel-soft overflow-hidden">
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+                  </div>
                 </div>
-              ))
-            )}
+              )
+            })}
           </div>
-        ))}
-      </div>
+        )}
+      </Card>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
 import { SubmitResponseSchema } from "./models.js";
 import { emitResponseNew } from "../socket/index.js";
 
+// Get access to Poll with the shared ID
 export async function getPublicPoll(req: Request, res: Response) {
   const shareIdRaw = req.params.shareId;
   const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
@@ -19,9 +20,12 @@ export async function getPublicPoll(req: Request, res: Response) {
   const [poll] = await db
     .select()
     .from(pollsTable)
-    .where(and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)));
+    .where(
+      and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)),
+    );
 
-  if (!poll) return res.status(404).json({ message: "Poll not found or not published" });
+  if (!poll)
+    return res.status(404).json({ message: "Poll not found or not published" });
 
   if (poll.expiresAt && new Date(poll.expiresAt) < new Date()) {
     return res.status(410).json({ message: "This poll has expired" });
@@ -36,7 +40,11 @@ export async function getPublicPoll(req: Request, res: Response) {
   const questionIds = questions.map((q) => q.id);
 
   const allOptions = questionIds.length
-    ? await db.select().from(optionsTable).where(inArray(optionsTable.questionId, questionIds)).orderBy(optionsTable.order)
+    ? await db
+        .select()
+        .from(optionsTable)
+        .where(inArray(optionsTable.questionId, questionIds))
+        .orderBy(optionsTable.order)
     : [];
 
   return res.status(200).json({
@@ -51,11 +59,15 @@ export async function getPublicPoll(req: Request, res: Response) {
       type: q.type,
       order: q.order,
       isRequired: q.isRequired,
-      options: allOptions.filter((o) => o.questionId === q.id).map((o) => ({ id: o.id, text: o.text, order: o.order })),
+      options: allOptions
+        .filter((o) => o.questionId === q.id)
+        .map((o) => ({ id: o.id, text: o.text, order: o.order })),
+      timeLimit: q.timeLimit,
     })),
   });
 }
 
+// Submit a response to a poll using the shared ID
 export async function submitResponse(req: Request, res: Response) {
   const shareIdRaw = req.params.shareId;
   const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
@@ -63,15 +75,20 @@ export async function submitResponse(req: Request, res: Response) {
 
   const parsed = SubmitResponseSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ message: "Validation failed", errors: parsed.error.issues });
+    return res
+      .status(400)
+      .json({ message: "Validation failed", errors: parsed.error.issues });
   }
 
   const [poll] = await db
     .select()
     .from(pollsTable)
-    .where(and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)));
+    .where(
+      and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)),
+    );
 
-  if (!poll) return res.status(404).json({ message: "Poll not found or not published" });
+  if (!poll)
+    return res.status(404).json({ message: "Poll not found or not published" });
 
   if (poll.expiresAt && new Date(poll.expiresAt) < new Date()) {
     return res.status(410).json({ message: "This poll has expired" });
@@ -87,29 +104,60 @@ export async function submitResponse(req: Request, res: Response) {
   // Reject questionIds not belonging to this poll
   for (const a of parsed.data.answers) {
     if (!validQuestionIds.has(a.questionId)) {
-      return res.status(400).json({ message: `Question ${a.questionId} is not part of this poll` });
+      return res
+        .status(400)
+        .json({ message: `Question ${a.questionId} is not part of this poll` });
     }
   }
 
-  const answerMap = new Map(parsed.data.answers.map((a) => [a.questionId, a]));
+  // Group answers by questionId (supports checkbox with multiple options)
+  const answersByQuestion = new Map<string, typeof parsed.data.answers>();
+  for (const a of parsed.data.answers) {
+    const existing = answersByQuestion.get(a.questionId) ?? [];
+    existing.push(a);
+    answersByQuestion.set(a.questionId, existing);
+  }
 
   for (const q of questions) {
-    const answer = answerMap.get(q.id);
-    if (q.isRequired && !answer) {
-      return res.status(400).json({ message: `Question "${q.text}" is required` });
+    const answers = answersByQuestion.get(q.id) ?? [];
+
+    if (q.isRequired && answers.length === 0) {
+      return res
+        .status(400)
+        .json({ message: `Question "${q.text}" is required` });
     }
-    if (q.type !== "text" && answer && !answer.optionId) {
-      return res.status(400).json({ message: `Question "${q.text}" requires an option selection` });
+
+    if (answers.length === 0) continue;
+
+    if (q.type === "radio" && answers.length > 1) {
+      return res
+        .status(400)
+        .json({ message: `Question "${q.text}" accepts only one answer` });
     }
-    if (q.type === "text" && answer && !answer.value) {
-      return res.status(400).json({ message: `Question "${q.text}" requires a text answer` });
+
+    if (q.type !== "text") {
+      const hasOption = answers.some((a) => a.optionId);
+      if (!hasOption) {
+        return res.status(400).json({
+          message: `Question "${q.text}" requires an option selection`,
+        });
+      }
+    }
+
+    if (q.type === "text" && !answers[0]!.value) {
+      return res
+        .status(400)
+        .json({ message: `Question "${q.text}" requires a text answer` });
     }
   }
 
   // Build per-question valid option sets to prevent cross-question option injection
   const questionOptionMap = new Map<string, Set<string>>();
   for (const q of questions) {
-    const opts = await db.select({ id: optionsTable.id }).from(optionsTable).where(eq(optionsTable.questionId, q.id));
+    const opts = await db
+      .select({ id: optionsTable.id })
+      .from(optionsTable)
+      .where(eq(optionsTable.questionId, q.id));
     questionOptionMap.set(q.id, new Set(opts.map((o) => o.id)));
   }
 
@@ -117,14 +165,19 @@ export async function submitResponse(req: Request, res: Response) {
     if (a.optionId) {
       const validOpts = questionOptionMap.get(a.questionId);
       if (!validOpts?.has(a.optionId)) {
-        return res.status(400).json({ message: `Option ${a.optionId} is not valid for question ${a.questionId}` });
+        return res.status(400).json({
+          message: `Option ${a.optionId} is not valid for question ${a.questionId}`,
+        });
       }
     }
   }
 
   // Transactional write
   const [newResponse] = await db.transaction(async (tx) => {
-    const [resp] = await tx.insert(responsesTable).values({ pollId: poll.id }).returning();
+    const [resp] = await tx
+      .insert(responsesTable)
+      .values({ pollId: poll.id })
+      .returning();
     if (!resp) throw new Error("Failed to create response");
 
     for (const a of parsed.data.answers) {
@@ -141,5 +194,7 @@ export async function submitResponse(req: Request, res: Response) {
 
   emitResponseNew(poll.id);
 
-  return res.status(201).json({ message: "Response submitted", responseId: newResponse.id });
+  return res
+    .status(201)
+    .json({ message: "Response submitted", responseId: newResponse.id });
 }

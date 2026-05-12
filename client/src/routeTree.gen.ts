@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PollsNewRouteImport } from './routes/polls.new'
 import { Route as PollsIdRouteImport } from './routes/polls.$id'
 import { Route as PShareIdRouteImport } from './routes/p.$shareId'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as PollsIdEditRouteImport } from './routes/polls.$id_.edit'
 import { Route as PollsIdResultsRouteImport } from './routes/polls.$id.results'
 import { Route as PollsIdAnalyticsRouteImport } from './routes/polls.$id.analytics'
@@ -55,6 +56,11 @@ const PShareIdRoute = PShareIdRouteImport.update({
   path: '/p/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PollsIdEditRoute = PollsIdEditRouteImport.update({
   id: '/polls/$id_/edit',
   path: '/polls/$id/edit',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
   '/polls/$id': typeof PollsIdRouteWithChildren
   '/polls/new': typeof PollsNewRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
   '/polls/$id': typeof PollsIdRouteWithChildren
   '/polls/new': typeof PollsNewRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
   '/polls/$id': typeof PollsIdRouteWithChildren
   '/polls/new': typeof PollsNewRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/register'
+    | '/auth/callback'
     | '/p/$shareId'
     | '/polls/$id'
     | '/polls/new'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/register'
+    | '/auth/callback'
     | '/p/$shareId'
     | '/polls/$id'
     | '/polls/new'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/register'
+    | '/auth/callback'
     | '/p/$shareId'
     | '/polls/$id'
     | '/polls/new'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   PShareIdRoute: typeof PShareIdRoute
   PollsIdRoute: typeof PollsIdRouteWithChildren
   PollsNewRoute: typeof PollsNewRoute
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/polls/$id_/edit': {
       id: '/polls/$id_/edit'
       path: '/polls/$id/edit'
@@ -251,6 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   PShareIdRoute: PShareIdRoute,
   PollsIdRoute: PollsIdRouteWithChildren,
   PollsNewRoute: PollsNewRoute,
@@ -259,12 +280,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

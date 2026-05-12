@@ -11,6 +11,7 @@ export const QuestionSchema = z
     type: z.enum(["radio", "checkbox", "text"]).default("radio"),
     order: z.number().int().min(0).optional(),
     isRequired: z.boolean().default(true),
+    timeLimit: z.number().int().min(1).max(600).optional(),
     options: z.array(OptionSchema).optional(),
   })
   .refine(

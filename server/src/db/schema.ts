@@ -14,7 +14,10 @@ export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 322 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }),
+  provider: varchar("provider", { length: 20 }).notNull().default("email"),
+  providerId: varchar("provider_id", { length: 255 }),
+  avatarUrl: varchar("avatar_url", { length: 500 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -57,6 +60,7 @@ export const questionsTable = pgTable(
     type: varchar("type", { length: 20 }).notNull().default("radio"),
     order: integer("order").notNull().default(0),
     isRequired: boolean("is_required").notNull().default(true),
+    timeLimit: integer("time_limit"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
     (table) => ({

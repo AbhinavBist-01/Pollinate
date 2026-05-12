@@ -15,6 +15,20 @@
       "when": 1778524769237,
       "tag": "0001_chunky_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778588255516,
+      "tag": "0002_milky_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778607285907,
+      "tag": "0003_sad_valkyrie",
+      "breakpoints": true
     }
   ]
 }
