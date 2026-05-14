@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api from '../lib/api'
+import { Button } from '#/components/ui/button'
+import { Card, CardContent } from '#/components/ui/card'
+import { Textarea } from '#/components/ui/textarea'
 
 export const Route = createFileRoute('/p/$shareId')({ component: PublicResponse })
 
@@ -40,9 +43,7 @@ function PublicResponse() {
   }, [current, startTimer])
 
   useEffect(() => {
-    if (timeLeft === 0 && current) {
-      handleNext()
-    }
+    if (timeLeft === 0 && current) handleNext()
   }, [timeLeft])
 
   function setOption(qId: string, optId: string) {
@@ -51,12 +52,9 @@ function PublicResponse() {
 
   function toggleOption(qId: string, optId: string) {
     setAnswers((prev) => {
-      const current = prev[qId] ?? []
-      const exists = current.some((a) => a.optionId === optId)
-      return {
-        ...prev,
-        [qId]: exists ? current.filter((a) => a.optionId !== optId) : [...current, { questionId: qId, optionId: optId }],
-      }
+      const selected = prev[qId] ?? []
+      const exists = selected.some((a) => a.optionId === optId)
+      return { ...prev, [qId]: exists ? selected.filter((a) => a.optionId !== optId) : [...selected, { questionId: qId, optionId: optId }] }
     })
   }
 
@@ -65,11 +63,8 @@ function PublicResponse() {
   }
 
   function handleNext() {
-    if (isLast) {
-      handleSubmit()
-    } else {
-      setCurrentIdx((prev) => prev + 1)
-    }
+    if (isLast) handleSubmit()
+    else setCurrentIdx((prev) => prev + 1)
   }
 
   async function handleSubmit() {
@@ -82,83 +77,82 @@ function PublicResponse() {
     }
   }
 
-  if (error) return <div className="flex items-center justify-center min-h-screen bg-cream"><div className="text-center"><p className="text-orange text-lg">{error}</p></div></div>
+  if (error) return <div className="grid min-h-screen place-items-center"><p className="text-primary">{error}</p></div>
   if (submitted) return (
-    <div className="flex items-center justify-center min-h-screen bg-cream">
-      <div className="text-center max-w-md mx-auto p-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
-          <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-        </div>
-        <h1 className="text-3xl font-bold text-charcoal">You're done!</h1>
-        <p className="text-orange mt-2 text-lg">Your responses have been recorded.</p>
-      </div>
+    <div className="grid min-h-screen place-items-center px-6">
+      <Card className="max-w-md border-white/10 bg-card/90 text-center">
+        <CardContent className="p-8">
+          <div className="mx-auto mb-6 grid size-20 place-items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 text-3xl text-emerald-400">✓</div>
+          <h1 className="text-3xl font-black text-foreground">You're done!</h1>
+          <p className="mt-2 text-muted-foreground">Your responses have been recorded.</p>
+        </CardContent>
+      </Card>
     </div>
   )
-  if (!poll) return <div className="flex items-center justify-center min-h-screen bg-cream"><p className="text-gray-400 text-lg">Loading...</p></div>
+  if (!poll) return <p className="py-20 text-center text-muted-foreground">Loading...</p>
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
-      {/* Header */}
-      <div className="bg-charcoal text-cream px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <h1 className="font-bold text-lg truncate">{poll.title}</h1>
-          <span className="text-sm text-honey">{currentIdx + 1}/{questions.length}</span>
+    <div className="min-h-screen">
+      <div className="border-b border-white/10 bg-card/80 px-6 py-4 backdrop-blur">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
+          <h1 className="truncate text-lg font-black text-foreground">{poll.title}</h1>
+          <span className="text-sm text-primary">{currentIdx + 1}/{questions.length}</span>
         </div>
-        {/* Progress bar */}
-        <div className="max-w-2xl mx-auto mt-2 h-1.5 rounded-full bg-white/20 overflow-hidden">
-          <div className="h-full rounded-full bg-honey transition-all" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
+        <div className="mx-auto mt-2 h-1.5 max-w-2xl overflow-hidden rounded-full bg-secondary">
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
         </div>
       </div>
 
-      {/* Question area */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-xl">
-          {/* Timer */}
+      <div className="flex min-h-[70vh] items-center justify-center p-6">
+        <div className="w-full max-w-xl space-y-6">
           {current?.timeLimit && (
-            <div className="text-center mb-8">
-              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold ${timeLeft !== null && timeLeft <= 5 ? 'bg-red-100 text-red-500 animate-pulse' : 'bg-honey/10 text-honey'}`}>
+            <div className="text-center">
+              <div className={`mx-auto grid size-16 place-items-center rounded-full text-2xl font-black ${timeLeft !== null && timeLeft <= 5 ? 'bg-destructive/10 text-destructive animate-pulse' : 'bg-primary/10 text-primary'}`}>
                 {timeLeft ?? current.timeLimit}
               </div>
-              <p className="text-xs text-gray-500 mt-1">seconds left</p>
+              <p className="mt-1 text-xs text-muted-foreground">seconds left</p>
             </div>
           )}
 
-          {/* Question */}
-          <div className="bg-white rounded-2xl shadow-sm border border-honey/10 p-8">
-            <p className="text-xs text-orange uppercase tracking-wide mb-2">Question {currentIdx + 1}</p>
-            <h2 className="text-xl font-bold text-charcoal mb-6">{current.text}</h2>
+          <Card className="border-white/10 bg-card/90">
+            <CardContent className="p-8">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Question {currentIdx + 1}</p>
+              <h2 className="mb-6 text-xl font-black text-foreground">{current.text}</h2>
 
-            {current.type === 'text' ? (
-              <textarea onChange={(e) => setText(current.id, e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-5 py-4 text-sm focus:border-honey focus:outline-none focus:ring-1 focus:ring-honey" rows={4} placeholder="Type your answer..." autoFocus />
-            ) : current.type === 'checkbox' ? (
-              <div className="space-y-3">
-                {current.options?.map((o: any) => (
-                  <label key={o.id} className={`flex items-center gap-4 rounded-xl border p-4 text-sm cursor-pointer transition-all hover:bg-cream ${answers[current.id]?.some((a: any) => a.optionId === o.id) ? 'border-honey bg-honey/5' : 'border-gray-100'}`}>
-                    <input type="checkbox" checked={answers[current.id]?.some((a: any) => a.optionId === o.id) ?? false} onChange={() => toggleOption(current.id, o.id)}
-                      className="w-5 h-5 rounded border-gray-300 text-honey focus:ring-honey" />
-                    {o.text}
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {current.options?.map((o: any) => (
-                  <label key={o.id} className={`flex items-center gap-4 rounded-xl border p-4 text-sm cursor-pointer transition-all hover:bg-cream ${answers[current.id]?.[0]?.optionId === o.id ? 'border-honey bg-honey/5' : 'border-gray-100'}`}>
-                    <input type="radio" name={current.id} checked={answers[current.id]?.[0]?.optionId === o.id} onChange={() => setOption(current.id, o.id)}
-                      className="w-5 h-5 border-gray-300 text-honey focus:ring-honey" />
-                    {o.text}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
+              {current.type === 'text' ? (
+                <Textarea onChange={(e) => setText(current.id, e.target.value)} rows={4} placeholder="Type your answer..." autoFocus />
+              ) : current.type === 'checkbox' ? (
+                <div className="space-y-3">
+                  {current.options?.map((o: any) => {
+                    const checked = answers[current.id]?.some((a: any) => a.optionId === o.id) ?? false
+                    return (
+                      <label key={o.id} className={`flex cursor-pointer items-center gap-4 rounded-xl border p-4 text-sm transition-all hover:bg-secondary/60 ${checked ? 'border-primary/40 bg-primary/5' : 'border-white/10 bg-secondary/30'}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleOption(current.id, o.id)} />
+                        <span className="text-foreground/80">{o.text}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {current.options?.map((o: any) => {
+                    const checked = answers[current.id]?.[0]?.optionId === o.id
+                    return (
+                      <label key={o.id} className={`flex cursor-pointer items-center gap-4 rounded-xl border p-4 text-sm transition-all hover:bg-secondary/60 ${checked ? 'border-primary/40 bg-primary/5' : 'border-white/10 bg-secondary/30'}`}>
+                        <input type="radio" name={current.id} checked={checked} onChange={() => setOption(current.id, o.id)} />
+                        <span className="text-foreground/80">{o.text}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Next / Submit */}
-          <div className="mt-6 text-center">
-            <button onClick={handleNext} className="rounded-xl bg-honey px-10 py-3 text-sm font-medium text-white hover:bg-honey/90 transition-colors shadow-sm">
-              {isLast ? 'Submit' : timeLeft === 0 ? 'Next →' : 'Skip →'}
-            </button>
+          <div className="text-center">
+            <Button onClick={handleNext} size="lg" className="min-w-40">
+              {isLast ? 'Submit' : timeLeft === 0 ? 'Next ->' : 'Skip ->'}
+            </Button>
           </div>
         </div>
       </div>

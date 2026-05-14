@@ -1,43 +1,83 @@
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from '../lib/auth'
+import { Button } from '#/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '#/components/ui/dropdown-menu'
+import { Menubar, MenubarMenu, MenubarTrigger } from '#/components/ui/menubar'
 
 export const Route = createRootRoute({
   component: RootLayout,
 })
 
-function Logo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" stroke="#F59E0B" strokeWidth="2" />
-      <circle cx="12" cy="12" r="4" fill="#FB923C" />
-      <line x1="12" y1="2" x2="12" y2="6" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-      <line x1="12" y1="18" x2="12" y2="22" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-      <line x1="2" y1="12" x2="6" y2="12" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-      <line x1="18" y1="12" x2="22" y2="12" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 function Nav() {
   const { user, logout } = useAuth()
+
   return (
-    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 backdrop-blur-xl px-6 py-3.5">
-      <div className="mx-auto flex max-w-5xl items-center gap-6">
-        <Link to="/" className="flex items-center gap-2.5 text-lg font-bold text-honey tracking-tight">
-          <Logo /> Pollinate
+    <nav className="sticky top-0 z-30 border-b border-white/10 bg-[#09090a]/80 px-5 py-3 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center gap-5">
+        <Link to="/" className="text-lg font-black tracking-tight text-foreground">
+          Pollinate
         </Link>
+
+        <Menubar className="ml-4 hidden border-white/10 bg-secondary/40 text-muted-foreground md:flex">
+          <MenubarMenu>
+            <MenubarTrigger asChild>
+              <Link to="/" className="px-3 py-1.5">Home</Link>
+            </MenubarTrigger>
+          </MenubarMenu>
+          {user && (
+            <>
+              <MenubarMenu>
+                <MenubarTrigger asChild>
+                  <Link to="/dashboard" className="px-3 py-1.5">Dashboard</Link>
+                </MenubarTrigger>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger asChild>
+                  <Link to="/polls/new" className="px-3 py-1.5">Create</Link>
+                </MenubarTrigger>
+              </MenubarMenu>
+            </>
+          )}
+        </Menubar>
+
         <div className="flex-1" />
+
         {user ? (
-          <div className="flex items-center gap-5">
-            <Link to="/dashboard" className="text-sm text-white/60 hover:text-white transition-colors">Dashboard</Link>
-            <Link to="/polls/new" className="text-sm text-white/60 hover:text-white transition-colors">Create</Link>
-            <span className="text-sm text-orange/80">{user.name}</span>
-            <button onClick={logout} className="rounded-lg border border-white/10 px-3.5 py-1.5 text-sm text-white/60 hover:text-white hover:border-white/20 transition-colors">Logout</button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="lg" className="gap-2 px-3 text-muted-foreground hover:text-foreground">
+                <span className="hidden sm:inline">{user.name}</span>
+                <span className="text-primary">Account</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 border-white/10 bg-popover">
+              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard">Dashboard</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/polls/new">Create poll</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} variant="destructive">Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="text-sm text-white/60 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/register" className="rounded-lg bg-honey px-4 py-1.5 text-sm font-medium text-white hover:bg-honey/90 transition-colors">Get started</Link>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="lg">
+              <Link to="/login">Sign in</Link>
+            </Button>
+            <Button asChild size="lg">
+              <Link to="/register">Get started</Link>
+            </Button>
           </div>
         )}
       </div>
@@ -45,13 +85,52 @@ function Nav() {
   )
 }
 
+function Footer() {
+  return (
+    <footer className="mt-20 border-t border-white/10 bg-[#09090a]/45 px-5 py-10 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div>
+          <Link to="/" className="text-lg font-black text-foreground">Pollinate</Link>
+          <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
+            Live polling for builders who need fast feedback, public response links, and real-time analytics in one focused workspace.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-10 text-sm sm:grid-cols-3">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">Product</p>
+            <Link to="/dashboard" className="block text-muted-foreground hover:text-foreground">Dashboard</Link>
+            <Link to="/polls/new" className="block text-muted-foreground hover:text-foreground">Create poll</Link>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">Access</p>
+            <Link to="/login" className="block text-muted-foreground hover:text-foreground">Login</Link>
+            <Link to="/register" className="block text-muted-foreground hover:text-foreground">Register</Link>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">Stack</p>
+            <p className="text-muted-foreground">React</p>
+            <p className="text-muted-foreground">Socket.IO</p>
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-white/10 pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+        <p>Pollinate - code your opinion into signal.</p>
+        <p>React / Express / PostgreSQL / Socket.IO</p>
+      </div>
+    </footer>
+  )
+}
+
 function RootLayout() {
   return (
     <AuthProvider>
-      <Nav />
-      <main className="mx-auto max-w-5xl p-6">
-        <Outlet />
-      </main>
+      <div className="app-surface min-h-screen">
+        <Nav />
+        <main className="mx-auto max-w-7xl px-5 py-6 sm:px-8">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
     </AuthProvider>
   )
 }

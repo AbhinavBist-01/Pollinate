@@ -1,6 +1,9 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import api, { getToken } from '../lib/api'
+import { Button } from '#/components/ui/button'
+import { Badge } from '#/components/ui/badge'
+import { Card, CardContent } from '#/components/ui/card'
 
 interface Poll { id: string; title: string; shareId: string; isPublished: boolean; createdAt: string; expiresAt: string | null }
 
@@ -28,44 +31,64 @@ function Dashboard() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-white">My Polls</h1>
-        <Link to="/polls/new" className="rounded-lg bg-honey px-5 py-2 text-sm font-medium text-white hover:bg-honey/90 transition-colors">+ New Poll</Link>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">Dashboard</p>
+          <h1 className="mt-2 text-3xl font-black text-foreground">My Polls</h1>
+        </div>
+        <Button asChild size="lg">
+          <Link to="/polls/new">+ New Poll</Link>
+        </Button>
       </div>
 
       {polls.length === 0 && (
-        <div className="text-center py-20 text-white/20">
-          <p className="text-lg">No polls yet</p>
-          <p className="text-sm mt-1">Create your first poll to get started.</p>
-        </div>
+        <Card className="border-white/10 bg-card/90">
+          <CardContent className="grid min-h-64 place-items-center p-8 text-center">
+            <div>
+              <p className="text-lg font-semibold text-foreground">No polls yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create your first poll to get started.</p>
+              <Button asChild className="mt-6">
+                <Link to="/polls/new">Create poll</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="space-y-3">
         {polls.map((poll) => (
-          <div key={poll.id} className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-4 hover:border-honey/30 transition-colors">
-            <div className={`w-2 h-10 rounded-full shrink-0 ${poll.isPublished ? 'bg-green-400' : 'bg-white/20'}`} />
-            <div className="flex-1 min-w-0">
-              <Link to="/polls/$id" params={{ id: poll.id }} className="font-semibold text-white hover:text-honey transition-colors truncate block">{poll.title}</Link>
-              <div className="flex items-center gap-3 mt-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${poll.isPublished ? 'bg-green-500/10 text-green-400' : 'bg-white/5 text-white/30'}`}>
-                  {poll.isPublished ? 'Published' : 'Draft'}
-                </span>
-                {poll.isPublished && (
-                  <button onClick={() => copyLink(poll.shareId)} className="text-xs text-honey/70 hover:text-honey cursor-pointer" title="Copy share link">
-                    /p/{poll.shareId}
-                  </button>
-                )}
-                {poll.expiresAt && <span className="text-xs text-orange/70">Expires {new Date(poll.expiresAt).toLocaleDateString()}</span>}
+          <Card key={poll.id} className="border-white/10 bg-card/90 transition-colors hover:border-primary/35">
+            <CardContent className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center">
+              <div className={`h-10 w-1.5 shrink-0 rounded-full ${poll.isPublished ? 'bg-emerald-400' : 'bg-white/20'}`} />
+              <div className="min-w-0 flex-1">
+                <Link to="/polls/$id" params={{ id: poll.id }} className="block truncate font-semibold text-foreground hover:text-primary">
+                  {poll.title}
+                </Link>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <Badge variant={poll.isPublished ? 'default' : 'outline'}>{poll.isPublished ? 'Published' : 'Draft'}</Badge>
+                  {poll.isPublished && (
+                    <button onClick={() => copyLink(poll.shareId)} className="text-xs text-primary hover:underline" title="Copy share link">
+                      /p/{poll.shareId}
+                    </button>
+                  )}
+                  {poll.expiresAt && <span className="text-xs text-muted-foreground">Expires {new Date(poll.expiresAt).toLocaleDateString()}</span>}
+                </div>
               </div>
-            </div>
-            <button onClick={() => togglePublish(poll)} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${poll.isPublished ? 'border-orange/20 text-orange/70 hover:border-orange/40' : 'border-green-500/20 text-green-400 hover:border-green-500/40'}`}>
-              {poll.isPublished ? 'Unpublish' : 'Publish'}
-            </button>
-            <Link to="/polls/$id/results" params={{ id: poll.id }} className="rounded-lg border border-honey/20 px-3 py-1.5 text-xs font-medium text-honey/70 hover:border-honey/40 transition-colors">Results</Link>
-            <Link to="/polls/$id/analytics" params={{ id: poll.id }} className="rounded-lg border border-honey/20 px-3 py-1.5 text-xs font-medium text-orange/70 hover:border-honey/40 transition-colors">Analytics</Link>
-            <button onClick={() => deletePoll(poll.id)} className="text-xs font-medium text-red-400/60 hover:text-red-400 transition-colors">Delete</button>
-          </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => togglePublish(poll)}>
+                  {poll.isPublished ? 'Unpublish' : 'Publish'}
+                </Button>
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/polls/$id/results" params={{ id: poll.id }}>Results</Link>
+                </Button>
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/polls/$id/analytics" params={{ id: poll.id }}>Analytics</Link>
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => deletePoll(poll.id)}>Delete</Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

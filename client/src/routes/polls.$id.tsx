@@ -1,10 +1,13 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import api, { getToken } from '../lib/api'
+import { Button } from '#/components/ui/button'
+import { Badge } from '#/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 
 export const Route = createFileRoute('/polls/$id')({
   component: PollDetail,
-  beforeLoad: () => { if (!localStorage.getItem('token')) throw redirect({ to: '/login' }) },
+  beforeLoad: () => { if (!getToken()) throw redirect({ to: '/login' }) },
 })
 
 function PollDetail() {
@@ -13,91 +16,103 @@ function PollDetail() {
   useEffect(() => { api.get(`/api/polls/${id}`).then((r) => setPoll(r.data)) }, [id])
 
   async function togglePublish() {
-    await api.patch(`/api/polls/${id}`, { isPublished: !poll.isPublished })
-    setPoll((prev: any) => ({ ...prev, isPublished: !prev.isPublished }))
+    setPoll((prev: any) => prev ? { ...prev, isPublished: !prev.isPublished } : prev)
+    try {
+      await api.patch(`/api/polls/${id}`, { isPublished: !poll?.isPublished })
+    } catch {
+      setPoll((prev: any) => prev ? { ...prev, isPublished: !prev.isPublished } : prev)
+    }
   }
 
   function copyLink() { navigator.clipboard.writeText(`${window.location.origin}/p/${poll.shareId}`) }
 
-  if (!poll) return <p className="text-center py-20 text-gray-400">Loading...</p>
+  if (!poll) return <p className="py-20 text-center text-muted-foreground">Loading...</p>
 
   const questionCount = poll.questions?.length ?? 0
   const radioCount = poll.questions?.filter((q: any) => q.type === 'radio' || q.type === 'checkbox').length ?? 0
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-start justify-between">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold text-charcoal">{poll.title}</h1>
-            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${poll.isPublished ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-              {poll.isPublished ? 'Published' : 'Draft'}
-            </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-black text-foreground">{poll.title}</h1>
+            <Badge variant={poll.isPublished ? 'default' : 'outline'}>{poll.isPublished ? 'Published' : 'Draft'}</Badge>
           </div>
-          {poll.description && <p className="text-orange mt-1">{poll.description}</p>}
-          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+          {poll.description && <p className="mt-2 text-primary/80">{poll.description}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
             <span>{radioCount} with options</span>
             {poll.createdAt && <span>Created {new Date(poll.createdAt).toLocaleDateString()}</span>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {poll.isPublished && (
-            <button onClick={copyLink} className="rounded-lg bg-honey/10 px-4 py-2 text-xs font-medium text-honey hover:bg-honey/20 transition-colors">Copy Link</button>
-          )}
-          <button onClick={togglePublish} className={`rounded-lg px-4 py-2 text-xs font-medium transition-colors ${poll.isPublished ? 'border border-orange/30 text-orange hover:bg-orange/5' : 'bg-green-500 text-white hover:bg-green-600'}`}>
+          {poll.isPublished && <Button variant="outline" onClick={copyLink}>Copy Link</Button>}
+          <Button onClick={togglePublish} variant={poll.isPublished ? 'outline' : 'default'}>
             {poll.isPublished ? 'Unpublish' : 'Publish'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {poll.isPublished && (
-        <div className="rounded-xl bg-honey/5 border border-honey/10 p-4 text-sm">
-          <span className="text-gray-600">Share link: </span>
-          <a href={`/p/${poll.shareId}`} target="_blank" className="text-honey font-medium hover:underline" rel="noreferrer">/p/{poll.shareId}</a>
-          <button onClick={copyLink} className="ml-2 text-xs text-orange hover:underline cursor-pointer">Copy</button>
-        </div>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center gap-2 p-4 text-sm">
+            <span className="text-muted-foreground">Share link:</span>
+            <a href={`/p/${poll.shareId}`} className="font-medium text-primary hover:underline">/p/{poll.shareId}</a>
+            <Button variant="ghost" size="sm" onClick={copyLink}>Copy</Button>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
-        <Link to="/polls/$id/results" params={{ id }} className="rounded-xl border border-honey/10 bg-white p-4 text-center shadow-sm hover:border-honey/30 transition-colors">
-          <p className="font-semibold text-honey">Results</p>
-          <p className="text-xs text-gray-500 mt-1">View responses</p>
-        </Link>
-        <Link to="/polls/$id/analytics" params={{ id }} className="rounded-xl border border-honey/10 bg-white p-4 text-center shadow-sm hover:border-honey/30 transition-colors">
-          <p className="font-semibold text-orange">Analytics</p>
-          <p className="text-xs text-gray-500 mt-1">Track performance</p>
-        </Link>
-        <Link to="/polls/$id/edit" params={{ id }} className="rounded-xl border border-honey/10 bg-white p-4 text-center shadow-sm hover:border-honey/30 transition-colors">
-          <p className="font-semibold text-charcoal">Edit</p>
-          <p className="text-xs text-gray-500 mt-1">Modify poll</p>
-        </Link>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="border-white/10 bg-card/90 transition-colors hover:border-primary/35">
+          <Link to="/polls/$id/results" params={{ id }} className="block p-5 text-center">
+            <p className="font-semibold text-foreground">Results</p>
+            <p className="mt-1 text-sm text-muted-foreground">View responses</p>
+          </Link>
+        </Card>
+        <Card className="border-white/10 bg-card/90 transition-colors hover:border-primary/35">
+          <Link to="/polls/$id/analytics" params={{ id }} className="block p-5 text-center">
+            <p className="font-semibold text-foreground">Analytics</p>
+            <p className="mt-1 text-sm text-muted-foreground">Track performance</p>
+          </Link>
+        </Card>
+        <Card className="border-white/10 bg-card/90 transition-colors hover:border-primary/35">
+          <Link to="/polls/$id/edit" params={{ id }} className="block p-5 text-center">
+            <p className="font-semibold text-foreground">Edit</p>
+            <p className="mt-1 text-sm text-muted-foreground">Modify poll</p>
+          </Link>
+        </Card>
       </div>
 
       <div className="space-y-3">
-        <h2 className="font-semibold text-charcoal">Questions</h2>
+        <h2 className="font-semibold text-foreground">Questions</h2>
         {poll.questions?.map((q: any, i: number) => (
-          <div key={i} className="rounded-xl border border-honey/10 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between mb-2">
-              <p className="font-medium text-charcoal">{q.text} {q.isRequired && <span className="text-orange">*</span>}</p>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="rounded bg-honey/10 px-2 py-0.5 text-honey uppercase">{q.type}</span>
-                {q.timeLimit && <span className="rounded bg-orange/10 px-2 py-0.5 text-orange">{q.timeLimit}s</span>}
+          <Card key={i} className="border-white/10 bg-card/90">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <CardTitle>{q.text} {q.isRequired && <span className="text-primary">*</span>}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="uppercase">{q.type}</Badge>
+                  {q.timeLimit && <Badge variant="outline">{q.timeLimit}s</Badge>}
+                </div>
               </div>
-            </div>
-            {q.type === 'text' ? (
-              <p className="text-sm text-gray-400 italic">Free text answer</p>
-            ) : (
-              <div className="space-y-1 mt-2">
-                {q.options?.map((o: any, j: number) => (
-                  <div key={j} className="flex items-center gap-2 text-sm text-gray-600">
-                    {q.type === 'radio' ? <div className="w-3 h-3 rounded-full border-2 border-gray-300" /> : <div className="w-3 h-3 rounded border-2 border-gray-300" />}
-                    {o.text}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </CardHeader>
+            <CardContent>
+              {q.type === 'text' ? (
+                <p className="rounded-lg border border-white/10 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground italic">Free text answer</p>
+              ) : (
+                <div className="space-y-2">
+                  {q.options?.map((o: any, j: number) => (
+                    <div key={j} className="flex items-center gap-2 rounded-lg border border-white/10 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground">
+                      <span className={`size-3 border border-white/25 ${q.type === 'radio' ? 'rounded-full' : 'rounded'}`} />
+                      {o.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

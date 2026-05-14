@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import api, { getToken } from '../lib/api'
 import { socket, joinPollRoom, onResponseNew, offResponseNew } from '../lib/socket'
-import { Card } from '../components/ui'
+import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 
 export const Route = createFileRoute('/polls/$id/analytics')({
   component: Analytics,
@@ -22,52 +22,56 @@ function Analytics() {
     return () => { offResponseNew(handler) }
   }, [id])
 
-  if (!data) return <p className="text-center py-20 text-text/40">Loading...</p>
+  if (!data) return <p className="py-20 text-center text-muted-foreground">Loading...</p>
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text">{data.title || 'Analytics'}</h1>
-        <p className="text-sm text-accent mt-1">Real-time poll performance</p>
+        <h1 className="text-2xl font-black text-foreground">{data.title || 'Analytics'}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Real-time poll performance</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-primary">{data.totalResponses}</p>
-          <p className="text-xs text-text/50 mt-1">Total Responses</p>
-        </Card>
-        <Card className="rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-accent">{data.completionRate ?? 100}%</p>
-          <p className="text-xs text-text/50 mt-1">Completion Rate</p>
-        </Card>
-        <Card className="rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-text">{data.responsesOverTime?.length ?? 0}</p>
-          <p className="text-xs text-text/50 mt-1">Active Days</p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          ['Total Responses', data.totalResponses, 'text-primary'],
+          ['Completion Rate', `${data.completionRate ?? 100}%`, 'text-orange'],
+          ['Active Days', data.responsesOverTime?.length ?? 0, 'text-foreground'],
+        ].map(([label, value, color]) => (
+          <Card key={label} className="border-white/10 bg-card/90">
+            <CardContent className="p-5 text-center">
+              <p className={`text-3xl font-black ${color}`}>{value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="rounded-xl">
-        <h2 className="font-semibold text-text mb-4">Responses Over Time</h2>
-        {data.responsesOverTime?.length === 0 ? (
-          <p className="text-sm text-text/40 italic">No responses yet. Share your poll to start collecting data.</p>
-        ) : (
-          <div className="space-y-2">
-            {data.responsesOverTime?.map((r: any) => {
-              const maxCount = Math.max(...data.responsesOverTime.map((x: any) => x.count))
-              return (
-                <div key={r.date}>
-                  <div className="flex justify-between text-sm mb-0.5">
-                    <span className="text-text/60">{r.date}</span>
-                    <span className="font-medium text-text">{r.count}</span>
+      <Card className="border-white/10 bg-card/90">
+        <CardHeader>
+          <CardTitle>Responses Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.responsesOverTime?.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">No responses yet. Share your poll to start collecting data.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.responsesOverTime?.map((r: any) => {
+                const maxCount = Math.max(...data.responsesOverTime.map((x: any) => x.count), 1)
+                return (
+                  <div key={r.date}>
+                    <div className="mb-1 flex justify-between text-sm">
+                      <span className="text-muted-foreground">{r.date}</span>
+                      <span className="font-medium text-foreground">{r.count}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="h-3 rounded-full bg-panel-soft overflow-hidden">
-                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(r.count / maxCount) * 100}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   )

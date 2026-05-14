@@ -1,7 +1,11 @@
 import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import api, { getToken } from '../lib/api'
-import { Button, Card, Field, Input, Select, Textarea } from '../components/ui'
+import { Button } from '#/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '#/components/ui/card'
+import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/components/ui/select'
 
 interface Option { text: string; order: number }
 interface Question { text: string; type: 'radio' | 'checkbox' | 'text'; order: number; isRequired: boolean; timeLimit?: number; options: Option[] }
@@ -30,13 +34,9 @@ function PollBuilder() {
   function updateQuestion(i: number, field: keyof Question, value: any) {
     setQuestions((prev) => {
       const qs = [...prev]
-      if (field === 'type' && (value === 'radio' || value === 'checkbox')) {
-        qs[i] = { ...qs[i], type: value, options: qs[i].options.length ? qs[i].options : [{ text: '', order: 0 }] }
-      } else if (field === 'type' && value === 'text') {
-        qs[i] = { ...qs[i], type: value, options: [] }
-      } else {
-        qs[i] = { ...qs[i], [field]: value }
-      }
+      if (field === 'type' && (value === 'radio' || value === 'checkbox')) qs[i] = { ...qs[i], type: value, options: qs[i].options.length ? qs[i].options : [{ text: '', order: 0 }] }
+      else if (field === 'type' && value === 'text') qs[i] = { ...qs[i], type: value, options: [] }
+      else qs[i] = { ...qs[i], [field]: value }
       return qs
     })
   }
@@ -72,68 +72,82 @@ function PollBuilder() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <p className="text-sm font-semibold text-accent">Poll builder</p>
-        <h1 className="mt-1 text-3xl font-black text-text">Create Poll</h1>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">Builder</p>
+        <h1 className="mt-2 text-3xl font-black text-foreground">Create Poll</h1>
       </div>
+
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Card className="space-y-4">
-          <Field label="Poll title">
-            <Input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What's your poll about?" required className="text-lg" />
-          </Field>
-          <Field label="Description (optional)">
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Add some context..." />
-          </Field>
+        <Card className="border-white/10 bg-card/90">
+          <CardHeader>
+            <CardTitle>Poll details</CardTitle>
+            <CardDescription>Give your poll a clear title and short context.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-foreground/80">Poll title</span>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What's your poll about?" required />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-foreground/80">Description</span>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Add context for responders..." />
+            </label>
+          </CardContent>
         </Card>
 
         {questions.map((q, qi) => (
-          <Card key={qi} className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-[1fr_11rem_6rem_auto_auto] lg:items-start">
-              <Field label={`Question ${qi + 1}`}>
-                <Input type="text" value={q.text} onChange={(e) => updateQuestion(qi, 'text', e.target.value)} placeholder="Enter your question" required />
-              </Field>
-              <Field label="Type">
-                <Select value={q.type} onChange={(e) => updateQuestion(qi, 'type', e.target.value)}>
-                  <option value="radio">Single choice</option>
-                  <option value="checkbox">Multiple choice</option>
-                  <option value="text">Free text</option>
-                </Select>
-              </Field>
-              <Field label="Timer">
-                <Input type="number" min={0} max={600} value={q.timeLimit ?? ''} onChange={(e) => updateQuestion(qi, 'timeLimit', e.target.value ? parseInt(e.target.value) : undefined)} placeholder="Off" className="px-2" />
-              </Field>
-              <label className="flex items-center gap-1.5 pt-8 text-sm text-text/60">
-                <input type="checkbox" checked={q.isRequired} onChange={(e) => updateQuestion(qi, 'isRequired', e.target.checked)}
-                  className="rounded border-white/20 bg-background text-primary focus:ring-accent" />
-                Required
-              </label>
-              {questions.length > 1 && (
-                <button type="button" onClick={() => removeQuestion(qi)} className="pt-8 text-sm font-semibold text-danger transition-colors hover:text-danger/80">Remove</button>
-              )}
-            </div>
-
-            {(q.type === 'radio' || q.type === 'checkbox') && (
-              <div className="space-y-2">
-                {q.options.map((o, oi) => (
-                  <div key={oi} className="flex items-center gap-2">
-                    {q.type === 'radio' ? <div className="h-4 w-4 shrink-0 rounded-full border-2 border-white/25" /> : <div className="h-4 w-4 shrink-0 rounded border-2 border-white/25" />}
-                    <Input type="text" value={o.text} onChange={(e) => updateOption(qi, oi, e.target.value)} className="flex-1 py-2" placeholder={`Option ${oi + 1}`} required />
-                    {q.options.length > 1 && (
-                      <button type="button" onClick={() => removeOption(qi, oi)} className="text-sm font-semibold text-text/40 transition-colors hover:text-danger">X</button>
-                    )}
-                  </div>
-                ))}
-                <button type="button" onClick={() => addOption(qi)} className="ml-7 text-sm font-semibold text-accent transition-colors hover:text-accent/80">+ Add option</button>
+          <Card key={qi} className="border-white/10 bg-card/90">
+            <CardHeader>
+              <CardTitle>Question {qi + 1}</CardTitle>
+              <CardDescription>{q.type === 'text' ? 'Free text response' : 'Choice based response'}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_12rem_7rem_auto_auto] lg:items-end">
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-foreground/80">Question</span>
+                  <Input value={q.text} onChange={(e) => updateQuestion(qi, 'text', e.target.value)} placeholder="Enter your question" required />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-foreground/80">Type</span>
+                  <Select value={q.type} onValueChange={(value) => updateQuestion(qi, 'type', value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="radio">Single choice</SelectItem>
+                      <SelectItem value="checkbox">Multiple choice</SelectItem>
+                      <SelectItem value="text">Free text</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-foreground/80">Timer</span>
+                  <Input type="number" min={0} max={600} value={q.timeLimit ?? ''} onChange={(e) => updateQuestion(qi, 'timeLimit', e.target.value ? parseInt(e.target.value) : undefined)} placeholder="Off" />
+                </label>
+                <label className="flex items-center gap-2 pb-2 text-sm text-muted-foreground">
+                  <input type="checkbox" checked={q.isRequired} onChange={(e) => updateQuestion(qi, 'isRequired', e.target.checked)} />
+                  Required
+                </label>
+                {questions.length > 1 && <Button type="button" variant="destructive" onClick={() => removeQuestion(qi)}>Remove</Button>}
               </div>
-            )}
+
+              {(q.type === 'radio' || q.type === 'checkbox') && (
+                <div className="space-y-2 rounded-xl border border-white/10 bg-secondary/30 p-3">
+                  {q.options.map((o, oi) => (
+                    <div key={oi} className="flex items-center gap-2">
+                      <span className={`size-4 shrink-0 border border-white/25 ${q.type === 'radio' ? 'rounded-full' : 'rounded'}`} />
+                      <Input value={o.text} onChange={(e) => updateOption(qi, oi, e.target.value)} placeholder={`Option ${oi + 1}`} required />
+                      {q.options.length > 1 && <Button type="button" variant="ghost" onClick={() => removeOption(qi, oi)}>X</Button>}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => addOption(qi)}>+ Add option</Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
         ))}
 
-        <button type="button" onClick={addQuestion} className="w-full rounded-xl border-2 border-dashed border-primary/30 py-4 text-sm font-semibold text-primary transition-colors hover:border-primary/50 hover:bg-primary/5">
-          + Add question
-        </button>
-        <Button type="submit" className="w-full">Create Poll</Button>
+        <Button type="button" variant="outline" size="lg" className="w-full border-dashed" onClick={addQuestion}>+ Add question</Button>
+        <Button type="submit" size="lg" className="w-full">Create Poll</Button>
       </form>
     </div>
   )
