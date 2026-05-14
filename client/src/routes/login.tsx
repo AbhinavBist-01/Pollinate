@@ -4,10 +4,10 @@ import { useAuth } from "../lib/auth";
 import { API_URL } from "../lib/api";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    oauthError:
-      typeof search.oauthError === "string" ? search.oauthError : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { oauthError?: string } =>
+    typeof search.oauthError === "string"
+      ? { oauthError: search.oauthError }
+      : {},
   component: Login,
 });
 
