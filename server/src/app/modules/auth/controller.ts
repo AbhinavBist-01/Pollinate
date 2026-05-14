@@ -88,23 +88,41 @@ const CLIENT_URL =
 const API_URL =
   process.env.API_URL || `http://localhost:${process.env.PORT || 8000}`;
 
+function googleRedirectUri() {
+  return `${API_URL}/api/auth/google/callback`;
+}
+
+function redirectOAuthError(res: Response, message: string) {
+  return res.redirect(
+    `${CLIENT_URL}/auth/callback?error=${encodeURIComponent(message)}`,
+  );
+}
+
 // Google OAuth
 export async function googleAuth(_req: Request, res: Response) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId)
-    return res.status(501).json({ message: "Google OAuth not configured" });
-  const redirectUri = `${API_URL}/api/auth/google/callback`;
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
+    return redirectOAuthError(res, "Google OAuth is not configured");
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: googleRedirectUri(),
+    response_type: "code",
+    scope: "openid email profile",
+    prompt: "select_account",
+  });
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   return res.redirect(url);
 }
 
 export async function googleCallback(req: Request, res: Response) {
+  const oauthError = req.query.error;
+  if (oauthError) return redirectOAuthError(res, String(oauthError));
+
   const { code } = req.query;
-  if (!code)
-    return res.status(400).json({ message: "Authorization code required" });
+  if (!code) return redirectOAuthError(res, "Authorization code required");
 
   try {
-    const redirectUri = `${API_URL}/api/auth/google/callback`;
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -112,13 +130,19 @@ export async function googleCallback(req: Request, res: Response) {
         code: code as string,
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: redirectUri,
+        redirect_uri: googleRedirectUri(),
         grant_type: "authorization_code",
       }),
     });
-    const tokens = (await tokenRes.json()) as { access_token?: string };
+    const tokens = (await tokenRes.json()) as {
+      access_token?: string;
+      error_description?: string;
+    };
     if (!tokens.access_token)
-      return res.status(400).json({ message: "Failed to get access token" });
+      return redirectOAuthError(
+        res,
+        tokens.error_description || "Failed to get Google access token",
+      );
 
     const userRes = await fetch(
       "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -133,7 +157,7 @@ export async function googleCallback(req: Request, res: Response) {
       picture?: string;
     };
     if (!profile.email)
-      return res.status(400).json({ message: "Google account has no email" });
+      return redirectOAuthError(res, "Google account has no email");
 
     const existing = await db
       .select()
@@ -164,8 +188,6 @@ export async function googleCallback(req: Request, res: Response) {
     const token = signToken(user);
     return res.redirect(`${CLIENT_URL}/auth/callback?token=${token}`);
   } catch (err: any) {
-    return res
-      .status(500)
-      .json({ message: "Google OAuth failed", detail: err?.message });
+    return redirectOAuthError(res, err?.message || "Google OAuth failed");
   }
 }

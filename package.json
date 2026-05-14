@@ -10,6 +10,10 @@
     "typecheck": "cd server && pnpm run typecheck && cd ../client && pnpm run typecheck",
     "lint": "cd server && pnpm run lint && cd ../client && pnpm run lint",
     "format": "cd server && pnpm run format && cd ../client && pnpm run format",
-    "format:check": "cd server && pnpm run format:check && cd ../client && pnpm run format:check"
+    "format:check": "cd server && pnpm run format:check && cd ../client && pnpm run format:check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

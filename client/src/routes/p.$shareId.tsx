@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Button } from "#/components/ui/button";
+import { Card, CardContent } from "#/components/ui/card";
+import { Input } from "#/components/ui/input";
+import { Textarea } from "#/components/ui/textarea";
 import api from "../lib/api";
 import {
   joinPollRoom,
@@ -80,6 +84,8 @@ function PublicResponse() {
 
   useEffect(() => {
     if (timeLeft === 0 && current) handleNext();
+    // Timer completion intentionally reacts only when the countdown reaches zero.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
   function setOption(qId: string, optId: string) {

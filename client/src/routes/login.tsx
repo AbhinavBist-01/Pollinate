@@ -3,14 +3,21 @@ import { useState } from "react";
 import { useAuth } from "../lib/auth";
 import { API_URL } from "../lib/api";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    oauthError:
+      typeof search.oauthError === "string" ? search.oauthError : undefined,
+  }),
+  component: Login,
+});
 
 function Login() {
   const navigate = useNavigate();
+  const { oauthError } = Route.useSearch();
   const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(oauthError ?? "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { setToken } from "../lib/api";
+import { useAuthStore } from "#/state/auth-store";
 
 export const Route = createFileRoute("/auth/callback")({
   component: OAuthCallback,
@@ -9,19 +10,29 @@ export const Route = createFileRoute("/auth/callback")({
 function OAuthCallback() {
   const navigate = useNavigate();
   const done = useRef(false);
+  const hydrate = useAuthStore((state) => state.hydrate);
 
   useEffect(() => {
     if (done.current) return;
     done.current = true;
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
+    const error = params.get("error");
     if (token) {
       setToken(token);
-      navigate({ to: "/dashboard", replace: true });
+      hydrate()
+        .then(() => navigate({ to: "/dashboard", replace: true }))
+        .catch(() => navigate({ to: "/login", replace: true }));
+    } else if (error) {
+      navigate({
+        to: "/login",
+        search: { oauthError: error },
+        replace: true,
+      });
     } else {
       navigate({ to: "/login", replace: true });
     }
-  }, [navigate]);
+  }, [hydrate, navigate]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-charcoal">
