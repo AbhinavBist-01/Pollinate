@@ -9,7 +9,9 @@ const submitLimiter = rateLimit({
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many vote attempts. Please wait a minute and try again." },
+  message: {
+    message: "Too many vote attempts. Please wait a minute and try again.",
+  },
 });
 
 publicRouter.get("/:shareId", getPublicPoll);

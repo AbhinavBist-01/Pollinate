@@ -22,7 +22,12 @@ function getEffectiveStatus(poll: {
   if (poll.endedAt || poll.status === "ended") return "ended";
   if (poll.expiresAt && poll.expiresAt < now) return "ended";
   if (poll.scheduledAt && poll.scheduledAt > now) return "scheduled";
-  if (poll.status === "scheduled" && poll.scheduledAt && poll.scheduledAt <= now) return "live";
+  if (
+    poll.status === "scheduled" &&
+    poll.scheduledAt &&
+    poll.scheduledAt <= now
+  )
+    return "live";
   if (poll.status === "live" || poll.isPublished) return "live";
   return "draft";
 }
@@ -48,7 +53,10 @@ export async function getPublicPoll(req: Request, res: Response) {
   const status = getEffectiveStatus(poll);
   if (status !== "live") {
     return res.status(status === "scheduled" ? 425 : 410).json({
-      message: status === "scheduled" ? "This poll is scheduled and not live yet" : "This poll is not accepting responses",
+      message:
+        status === "scheduled"
+          ? "This poll is scheduled and not live yet"
+          : "This poll is not accepting responses",
       status,
       scheduledAt: poll.scheduledAt,
       endedAt: poll.endedAt,
@@ -111,13 +119,15 @@ export async function submitResponse(req: Request, res: Response) {
     .from(pollsTable)
     .where(eq(pollsTable.shareId, shareId));
 
-  if (!poll)
-    return res.status(404).json({ message: "Poll not found" });
+  if (!poll) return res.status(404).json({ message: "Poll not found" });
 
   const status = getEffectiveStatus(poll);
   if (status !== "live") {
     return res.status(status === "scheduled" ? 425 : 410).json({
-      message: status === "scheduled" ? "This poll is scheduled and not live yet" : "This poll is not accepting responses",
+      message:
+        status === "scheduled"
+          ? "This poll is scheduled and not live yet"
+          : "This poll is not accepting responses",
       status,
     });
   }
@@ -126,7 +136,12 @@ export async function submitResponse(req: Request, res: Response) {
   const existingResponses = await db
     .select({ id: responsesTable.id })
     .from(responsesTable)
-    .where(and(eq(responsesTable.pollId, poll.id), eq(responsesTable.voterKey, voterKey)));
+    .where(
+      and(
+        eq(responsesTable.pollId, poll.id),
+        eq(responsesTable.voterKey, voterKey),
+      ),
+    );
   if (existingResponses.length >= poll.voteLimitPerSession) {
     return res.status(429).json({
       message: `Vote limit reached for this device/session (${poll.voteLimitPerSession})`,

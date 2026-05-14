@@ -5,7 +5,9 @@ const api = axios.create({
 });
 
 function canUseStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
 api.interceptors.request.use((config) => {

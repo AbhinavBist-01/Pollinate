@@ -146,8 +146,11 @@ export async function getResults(req: Request, res: Response) {
       let answeredQuestions = 0;
 
       for (const questionId of scoredQuestionIds) {
-        const correct = correctOptionIdsByQuestion.get(questionId) ?? new Set<string>();
-        const selected = answersByResponseQuestion.get(`${response.id}:${questionId}`) ?? new Set<string>();
+        const correct =
+          correctOptionIdsByQuestion.get(questionId) ?? new Set<string>();
+        const selected =
+          answersByResponseQuestion.get(`${response.id}:${questionId}`) ??
+          new Set<string>();
         if (selected.size > 0) answeredQuestions += 1;
         const isCorrect =
           correct.size > 0 &&
@@ -158,7 +161,8 @@ export async function getResults(req: Request, res: Response) {
 
       return {
         responseId: response.id,
-        respondentName: response.respondentName || `Responder ${responses.length - index}`,
+        respondentName:
+          response.respondentName || `Responder ${responses.length - index}`,
         correctAnswers,
         answeredQuestions,
         totalScoreableQuestions: scoredQuestionIds.length,
@@ -169,23 +173,25 @@ export async function getResults(req: Request, res: Response) {
       };
     })
     .sort((a, b) => {
-      if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
-      if (b.scorePercent !== a.scorePercent) return b.scorePercent - a.scorePercent;
-      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+      if (b.correctAnswers !== a.correctAnswers)
+        return b.correctAnswers - a.correctAnswers;
+      if (b.scorePercent !== a.scorePercent)
+        return b.scorePercent - a.scorePercent;
+      return (
+        new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+      );
     })
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
-  return res
-    .status(200)
-    .json({
-      pollId: poll.id,
-      title: poll.title,
-      shareId: poll.shareId,
-      totalResponses,
-      scoredQuestionCount: scoredQuestionIds.length,
-      leaderboard,
-      results,
-    });
+  return res.status(200).json({
+    pollId: poll.id,
+    title: poll.title,
+    shareId: poll.shareId,
+    totalResponses,
+    scoredQuestionCount: scoredQuestionIds.length,
+    leaderboard,
+    results,
+  });
 }
 
 // Get analytics data for a poll (response trends, completion rates, etc.)`

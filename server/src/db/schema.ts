@@ -67,9 +67,9 @@ export const questionsTable = pgTable(
     timeLimit: integer("time_limit"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-    (table) => ({
-      pollIdIdx: index("questions_poll_id_idx").on(table.pollId),
-    }),
+  (table) => ({
+    pollIdIdx: index("questions_poll_id_idx").on(table.pollId),
+  }),
 );
 
 export const optionsTable = pgTable(
@@ -84,9 +84,9 @@ export const optionsTable = pgTable(
     isCorrect: boolean("is_correct").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-    (table) => ({
-      questionIdIdx: index("options_question_id_idx").on(table.questionId),
-    }),
+  (table) => ({
+    questionIdIdx: index("options_question_id_idx").on(table.questionId),
+  }),
 );
 
 export const responsesTable = pgTable(

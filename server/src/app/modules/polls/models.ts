@@ -20,7 +20,10 @@ export const QuestionSchema = z
       if (q.type === "text") return true;
       return q.options && q.options.length > 0;
     },
-    { message: "radio/checkbox questions must have at least one option", path: ["options"] },
+    {
+      message: "radio/checkbox questions must have at least one option",
+      path: ["options"],
+    },
   );
 
 export const CreatePollSchema = z.object({

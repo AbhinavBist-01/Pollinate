@@ -1,0 +1,9 @@
+node_modules
+dist
+client/dist
+server/dist
+server/postgres-data
+client/src/routeTree.gen.ts
+server/drizzle/meta
+*.log
+pnpm-lock.yaml

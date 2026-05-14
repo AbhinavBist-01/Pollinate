@@ -1,5 +1,5 @@
 interface ImportMeta {
-  env: { [key: string]: string | undefined }
+  env: { [key: string]: string | undefined };
 }
 
-declare module '*.css' {}
+declare module "*.css" {}

@@ -9,56 +9,90 @@ import { RegisterSchema, LoginSchema } from "./models.js";
 const JWT_SECRET = process.env.JWT_SECRET || "pollinate-jwt-secret-dev";
 
 function signToken(user: { id: string; email: string }) {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+    expiresIn: "7d",
+  });
 }
 
 export async function register(req: Request, res: Response) {
   const parsed = RegisterSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Validation failed", errors: parsed.error.issues });
+  if (!parsed.success)
+    return res
+      .status(400)
+      .json({ message: "Validation failed", errors: parsed.error.issues });
 
   const { name, email, password } = parsed.data;
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (existing.length > 0) return res.status(409).json({ message: "Email already registered" });
+  const existing = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+  if (existing.length > 0)
+    return res.status(409).json({ message: "Email already registered" });
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const [user] = await db.insert(usersTable).values({ name, email, passwordHash }).returning();
+  const [user] = await db
+    .insert(usersTable)
+    .values({ name, email, passwordHash })
+    .returning();
   if (!user) return res.status(500).json({ message: "Failed to create user" });
 
   const token = signToken(user);
-  return res.status(201).json({ user: { id: user.id, name: user.name, email: user.email }, token });
+  return res
+    .status(201)
+    .json({ user: { id: user.id, name: user.name, email: user.email }, token });
 }
 
 export async function login(req: Request, res: Response) {
   const parsed = LoginSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Validation failed", errors: parsed.error.issues });
+  if (!parsed.success)
+    return res
+      .status(400)
+      .json({ message: "Validation failed", errors: parsed.error.issues });
 
   const { email, password } = parsed.data;
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  const existing = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
   const user = existing[0];
-  if (!user || !user.passwordHash) return res.status(401).json({ message: "Invalid email or password" });
+  if (!user || !user.passwordHash)
+    return res.status(401).json({ message: "Invalid email or password" });
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+  if (!valid)
+    return res.status(401).json({ message: "Invalid email or password" });
 
   const token = signToken(user);
-  return res.status(200).json({ user: { id: user.id, name: user.name, email: user.email }, token });
+  return res
+    .status(200)
+    .json({ user: { id: user.id, name: user.name, email: user.email }, token });
 }
 
 export async function me(req: Request, res: Response) {
   const [user] = await db
-    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, avatarUrl: usersTable.avatarUrl, provider: usersTable.provider })
-    .from(usersTable).where(eq(usersTable.id, req.user!.id));
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      avatarUrl: usersTable.avatarUrl,
+      provider: usersTable.provider,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user!.id));
   if (!user) return res.status(404).json({ message: "User not found" });
   return res.status(200).json(user);
 }
 
-const CLIENT_URL = process.env.CORS_ORIGIN?.split(",")[0]?.trim() || "http://localhost:3000";
-const API_URL = process.env.API_URL || `http://localhost:${process.env.PORT || 8000}`;
+const CLIENT_URL =
+  process.env.CORS_ORIGIN?.split(",")[0]?.trim() || "http://localhost:3000";
+const API_URL =
+  process.env.API_URL || `http://localhost:${process.env.PORT || 8000}`;
 
 // Google OAuth
 export async function googleAuth(_req: Request, res: Response) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) return res.status(501).json({ message: "Google OAuth not configured" });
+  if (!clientId)
+    return res.status(501).json({ message: "Google OAuth not configured" });
   const redirectUri = `${API_URL}/api/auth/google/callback`;
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
   return res.redirect(url);
@@ -66,7 +100,8 @@ export async function googleAuth(_req: Request, res: Response) {
 
 export async function googleCallback(req: Request, res: Response) {
   const { code } = req.query;
-  if (!code) return res.status(400).json({ message: "Authorization code required" });
+  if (!code)
+    return res.status(400).json({ message: "Authorization code required" });
 
   try {
     const redirectUri = `${API_URL}/api/auth/google/callback`;
@@ -81,36 +116,56 @@ export async function googleCallback(req: Request, res: Response) {
         grant_type: "authorization_code",
       }),
     });
-    const tokens = await tokenRes.json() as { access_token?: string };
-    if (!tokens.access_token) return res.status(400).json({ message: "Failed to get access token" });
+    const tokens = (await tokenRes.json()) as { access_token?: string };
+    if (!tokens.access_token)
+      return res.status(400).json({ message: "Failed to get access token" });
 
-    const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const profile = await userRes.json() as { id?: string; email?: string; name?: string; picture?: string };
-    if (!profile.email) return res.status(400).json({ message: "Google account has no email" });
+    const userRes = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      },
+    );
+    const profile = (await userRes.json()) as {
+      id?: string;
+      email?: string;
+      name?: string;
+      picture?: string;
+    };
+    if (!profile.email)
+      return res.status(400).json({ message: "Google account has no email" });
 
-    const existing = await db.select().from(usersTable).where(eq(usersTable.email, profile.email));
+    const existing = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, profile.email));
     let user = existing[0];
 
     if (user) {
-      if (!user.providerId) await db.update(usersTable).set({ providerId: profile.id, avatarUrl: profile.picture }).where(eq(usersTable.id, user.id));
+      if (!user.providerId)
+        await db
+          .update(usersTable)
+          .set({ providerId: profile.id, avatarUrl: profile.picture })
+          .where(eq(usersTable.id, user.id));
     } else {
-      const [newUser] = await db.insert(usersTable).values({
-        name: profile.name || profile.email.split("@")[0]!,
-        email: profile.email,
-        provider: "google",
-        providerId: profile.id,
-        avatarUrl: profile.picture,
-      }).returning();
+      const [newUser] = await db
+        .insert(usersTable)
+        .values({
+          name: profile.name || profile.email.split("@")[0]!,
+          email: profile.email,
+          provider: "google",
+          providerId: profile.id,
+          avatarUrl: profile.picture,
+        })
+        .returning();
       user = newUser!;
     }
 
     const token = signToken(user);
     return res.redirect(`${CLIENT_URL}/auth/callback?token=${token}`);
   } catch (err: any) {
-    return res.status(500).json({ message: "Google OAuth failed", detail: err?.message });
+    return res
+      .status(500)
+      .json({ message: "Google OAuth failed", detail: err?.message });
   }
 }
-
-

@@ -1,0 +1,6 @@
+node_modules
+dist
+postgres-data
+drizzle/meta
+*.log
+pnpm-lock.yaml

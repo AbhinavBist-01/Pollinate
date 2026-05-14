@@ -19,18 +19,28 @@ function normalizeStatus(input: {
   return input.isPublished ? "live" : "draft";
 }
 
-function withEffectiveStatus<T extends {
-  status: string;
-  isPublished: boolean;
-  scheduledAt: Date | null;
-  expiresAt: Date | null;
-  endedAt: Date | null;
-}>(poll: T): T {
+function withEffectiveStatus<
+  T extends {
+    status: string;
+    isPublished: boolean;
+    scheduledAt: Date | null;
+    expiresAt: Date | null;
+    endedAt: Date | null;
+  },
+>(poll: T): T {
   const now = new Date();
-  if (poll.endedAt || poll.status === "ended" || (poll.expiresAt && poll.expiresAt < now)) {
+  if (
+    poll.endedAt ||
+    poll.status === "ended" ||
+    (poll.expiresAt && poll.expiresAt < now)
+  ) {
     return { ...poll, status: "ended", isPublished: false };
   }
-  if (poll.status === "scheduled" && poll.scheduledAt && poll.scheduledAt <= now) {
+  if (
+    poll.status === "scheduled" &&
+    poll.scheduledAt &&
+    poll.scheduledAt <= now
+  ) {
     return { ...poll, status: "live", isPublished: true };
   }
   return poll;
@@ -45,7 +55,15 @@ export async function createPoll(req: Request, res: Response) {
       .json({ message: "Validation failed", errors: parsed.error.issues });
   }
 
-  const { title, description, expiresAt, scheduledAt, isPublished, voteLimitPerSession, questions } = parsed.data;
+  const {
+    title,
+    description,
+    expiresAt,
+    scheduledAt,
+    isPublished,
+    voteLimitPerSession,
+    questions,
+  } = parsed.data;
   const status = normalizeStatus(parsed.data);
   const shareId = nanoid(12);
 
