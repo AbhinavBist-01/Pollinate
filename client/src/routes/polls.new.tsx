@@ -1,18 +1,13 @@
 import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
-import api, { getToken } from '../lib/api'
-import { Button } from '#/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '#/components/ui/card'
-import { Input } from '#/components/ui/input'
-import { Textarea } from '#/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/components/ui/select'
+import api from '../lib/api'
 
 interface Option { text: string; order: number }
 interface Question { text: string; type: 'radio' | 'checkbox' | 'text'; order: number; isRequired: boolean; timeLimit?: number; options: Option[] }
 
 export const Route = createFileRoute('/polls/new')({
   component: PollBuilder,
-  beforeLoad: () => { if (!getToken()) throw redirect({ to: '/login' }) },
+  beforeLoad: () => { if (!localStorage.getItem('token')) throw redirect({ to: '/login' }) },
 })
 
 function PollBuilder() {
@@ -23,14 +18,8 @@ function PollBuilder() {
     { text: '', type: 'radio', order: 0, isRequired: true, options: [{ text: '', order: 0 }] },
   ])
 
-  function addQuestion() {
-    setQuestions((prev) => [...prev, { text: '', type: 'radio', order: prev.length, isRequired: true, options: [{ text: '', order: 0 }] }])
-  }
-
-  function removeQuestion(i: number) {
-    setQuestions((prev) => prev.filter((_, idx) => idx !== i))
-  }
-
+  function addQuestion() { setQuestions((prev) => [...prev, { text: '', type: 'radio', order: prev.length, isRequired: true, options: [{ text: '', order: 0 }] }]) }
+  function removeQuestion(i: number) { setQuestions((prev) => prev.filter((_, idx) => idx !== i)) }
   function updateQuestion(i: number, field: keyof Question, value: any) {
     setQuestions((prev) => {
       const qs = [...prev]
@@ -40,30 +29,9 @@ function PollBuilder() {
       return qs
     })
   }
-
-  function addOption(qi: number) {
-    setQuestions((prev) => {
-      const qs = [...prev]
-      qs[qi] = { ...qs[qi], options: [...qs[qi].options, { text: '', order: qs[qi].options.length }] }
-      return qs
-    })
-  }
-
-  function updateOption(qi: number, oi: number, text: string) {
-    setQuestions((prev) => {
-      const qs = [...prev]
-      qs[qi] = { ...qs[qi], options: qs[qi].options.map((o, idx) => idx === oi ? { ...o, text } : o) }
-      return qs
-    })
-  }
-
-  function removeOption(qi: number, oi: number) {
-    setQuestions((prev) => {
-      const qs = [...prev]
-      qs[qi] = { ...qs[qi], options: qs[qi].options.filter((_, idx) => idx !== oi) }
-      return qs
-    })
-  }
+  function addOption(qi: number) { setQuestions((prev) => { const qs = [...prev]; qs[qi] = { ...qs[qi], options: [...qs[qi].options, { text: '', order: qs[qi].options.length }] }; return qs }) }
+  function updateOption(qi: number, oi: number, text: string) { setQuestions((prev) => { const qs = [...prev]; qs[qi] = { ...qs[qi], options: qs[qi].options.map((o, idx) => idx === oi ? { ...o, text } : o) }; return qs }) }
+  function removeOption(qi: number, oi: number) { setQuestions((prev) => { const qs = [...prev]; qs[qi] = { ...qs[qi], options: qs[qi].options.filter((_, idx) => idx !== oi) }; return qs }) }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -72,82 +40,77 @@ function PollBuilder() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">Builder</p>
-        <h1 className="mt-2 text-3xl font-black text-foreground">Create Poll</h1>
-      </div>
-
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-white mb-6">Create Poll</h1>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Card className="border-white/10 bg-card/90">
-          <CardHeader>
-            <CardTitle>Poll details</CardTitle>
-            <CardDescription>Give your poll a clear title and short context.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground/80">Poll title</span>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What's your poll about?" required />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground/80">Description</span>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Add context for responders..." />
-            </label>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/70">Poll title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-lg text-white placeholder-white/30 focus:border-honey focus:outline-none focus:ring-1 focus:ring-honey" placeholder="What's your poll about?" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/70">Description (optional)</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder-white/30 focus:border-honey focus:outline-none focus:ring-1 focus:ring-honey" rows={2} placeholder="Add some context..." />
+          </div>
+        </div>
 
         {questions.map((q, qi) => (
-          <Card key={qi} className="border-white/10 bg-card/90">
-            <CardHeader>
-              <CardTitle>Question {qi + 1}</CardTitle>
-              <CardDescription>{q.type === 'text' ? 'Free text response' : 'Choice based response'}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 lg:grid-cols-[1fr_12rem_7rem_auto_auto] lg:items-end">
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-foreground/80">Question</span>
-                  <Input value={q.text} onChange={(e) => updateQuestion(qi, 'text', e.target.value)} placeholder="Enter your question" required />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-foreground/80">Type</span>
-                  <Select value={q.type} onValueChange={(value) => updateQuestion(qi, 'type', value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="radio">Single choice</SelectItem>
-                      <SelectItem value="checkbox">Multiple choice</SelectItem>
-                      <SelectItem value="text">Free text</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-foreground/80">Timer</span>
-                  <Input type="number" min={0} max={600} value={q.timeLimit ?? ''} onChange={(e) => updateQuestion(qi, 'timeLimit', e.target.value ? parseInt(e.target.value) : undefined)} placeholder="Off" />
-                </label>
-                <label className="flex items-center gap-2 pb-2 text-sm text-muted-foreground">
-                  <input type="checkbox" checked={q.isRequired} onChange={(e) => updateQuestion(qi, 'isRequired', e.target.checked)} />
-                  Required
-                </label>
-                {questions.length > 1 && <Button type="button" variant="destructive" onClick={() => removeQuestion(qi)}>Remove</Button>}
+          <div key={qi} className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-sm font-medium text-white/70">Question {qi + 1}</label>
+                <input type="text" value={q.text} onChange={(e) => updateQuestion(qi, 'text', e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder-white/30 focus:border-honey focus:outline-none focus:ring-1 focus:ring-honey" placeholder="Enter your question" required />
               </div>
-
-              {(q.type === 'radio' || q.type === 'checkbox') && (
-                <div className="space-y-2 rounded-xl border border-white/10 bg-secondary/30 p-3">
-                  {q.options.map((o, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <span className={`size-4 shrink-0 border border-white/25 ${q.type === 'radio' ? 'rounded-full' : 'rounded'}`} />
-                      <Input value={o.text} onChange={(e) => updateOption(qi, oi, e.target.value)} placeholder={`Option ${oi + 1}`} required />
-                      {q.options.length > 1 && <Button type="button" variant="ghost" onClick={() => removeOption(qi, oi)}>X</Button>}
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" onClick={() => addOption(qi)}>+ Add option</Button>
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs text-white/40">Type</label>
+                <select value={q.type} onChange={(e) => updateQuestion(qi, 'type', e.target.value)}
+                  className="rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-honey focus:outline-none">
+                  <option value="radio">Single choice</option>
+                  <option value="checkbox">Multiple choice</option>
+                  <option value="text">Free text</option>
+                </select>
+              </div>
+              <div className="space-y-1 w-20">
+                <label className="text-xs text-white/40">Timer (s)</label>
+                <input type="number" min={0} max={600} value={q.timeLimit ?? ''} onChange={(e) => updateQuestion(qi, 'timeLimit', e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-2 py-2.5 text-sm text-white focus:border-honey focus:outline-none" placeholder="Off" />
+              </div>
+              <label className="flex items-center gap-1.5 pt-6 text-sm text-white/50">
+                <input type="checkbox" checked={q.isRequired} onChange={(e) => updateQuestion(qi, 'isRequired', e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-honey focus:ring-honey" />
+                Required
+              </label>
+              {questions.length > 1 && (
+                <button type="button" onClick={() => removeQuestion(qi)} className="pt-6 text-sm text-red-400/60 hover:text-red-400 transition-colors">Remove</button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            {(q.type === 'radio' || q.type === 'checkbox') && (
+              <div className="ml-2 space-y-2">
+                {q.options.map((o, oi) => (
+                  <div key={oi} className="flex items-center gap-2">
+                    {q.type === 'radio' ? <div className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0" /> : <div className="w-4 h-4 rounded border-2 border-white/20 shrink-0" />}
+                    <input type="text" value={o.text} onChange={(e) => updateOption(qi, oi, e.target.value)}
+                      className="flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-honey focus:outline-none" placeholder={`Option ${oi + 1}`} required />
+                    {q.options.length > 1 && (
+                      <button type="button" onClick={() => removeOption(qi, oi)} className="text-sm text-white/30 hover:text-red-400 transition-colors">✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => addOption(qi)} className="text-sm text-honey/70 hover:text-honey transition-colors ml-7">+ Add option</button>
+              </div>
+            )}
+          </div>
         ))}
 
-        <Button type="button" variant="outline" size="lg" className="w-full border-dashed" onClick={addQuestion}>+ Add question</Button>
-        <Button type="submit" size="lg" className="w-full">Create Poll</Button>
+        <button type="button" onClick={addQuestion} className="w-full rounded-xl border-2 border-dashed border-white/10 py-4 text-sm font-medium text-white/40 hover:border-honey/30 hover:text-honey transition-colors">
+          + Add question
+        </button>
+        <button type="submit" className="w-full rounded-xl bg-honey py-3 text-sm font-medium text-white hover:bg-honey/90 transition-colors shadow-sm">
+          Create Poll
+        </button>
       </form>
     </div>
   )

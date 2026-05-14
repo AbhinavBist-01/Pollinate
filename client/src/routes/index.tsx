@@ -1,18 +1,28 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent } from '#/components/ui/card'
+import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 function Home() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const [joinCode, setJoinCode] = useState('')
   const features = [
     ['Build', 'Create timed polls with single choice, multi choice, and text questions.'],
     ['Share', 'Publish a clean public response link without making voters create accounts.'],
     ['Read', 'Track answers, top options, and response velocity from a calm dashboard.'],
   ]
+
+  function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    const code = joinCode.trim()
+    if (code) navigate({ to: '/p/$shareId', params: { shareId: code } })
+  }
 
   return (
     <div className="space-y-20">
@@ -49,6 +59,15 @@ function Home() {
               <Link to="/login" className="text-primary hover:underline">Sign in</Link>
             </p>
           )}
+          <form onSubmit={handleJoin} className="mx-auto mt-8 flex max-w-md flex-col gap-3 rounded-xl border border-white/10 bg-black/25 p-2 sm:flex-row">
+            <Input
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value)}
+              placeholder="Enter join code"
+              className="border-transparent bg-transparent text-center sm:text-left"
+            />
+            <Button type="submit" variant="secondary" className="sm:min-w-28">Join</Button>
+          </form>
         </div>
       </section>
 

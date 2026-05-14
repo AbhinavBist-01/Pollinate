@@ -5,7 +5,17 @@ import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 import { Card, CardContent } from '#/components/ui/card'
 
-interface Poll { id: string; title: string; shareId: string; isPublished: boolean; createdAt: string; expiresAt: string | null }
+interface Poll {
+  id: string
+  title: string
+  shareId: string
+  status?: 'draft' | 'live' | 'ended' | 'scheduled'
+  isPublished: boolean
+  createdAt: string
+  scheduledAt?: string | null
+  endedAt?: string | null
+  expiresAt: string | null
+}
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -17,8 +27,14 @@ function Dashboard() {
   useEffect(() => { api.get('/api/polls').then((r) => setPolls(r.data)) }, [])
 
   async function togglePublish(p: Poll) {
-    await api.patch(`/api/polls/${p.id}`, { isPublished: !p.isPublished })
-    setPolls((prev) => prev.map((x) => (x.id === p.id ? { ...x, isPublished: !x.isPublished } : x)))
+    const nextLive = p.status !== 'live'
+    await api.patch(`/api/polls/${p.id}`, { status: nextLive ? 'live' : 'draft', isPublished: nextLive })
+    setPolls((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: nextLive ? 'live' : 'draft', isPublished: nextLive } : x)))
+  }
+
+  async function endPoll(p: Poll) {
+    await api.patch(`/api/polls/${p.id}`, { status: 'ended', isPublished: false })
+    setPolls((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: 'ended', isPublished: false } : x)))
   }
 
   async function deletePoll(id: string) {
@@ -66,21 +82,23 @@ function Dashboard() {
                   {poll.title}
                 </Link>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <Badge variant={poll.isPublished ? 'default' : 'outline'}>{poll.isPublished ? 'Published' : 'Draft'}</Badge>
-                  {poll.isPublished && (
+                  <Badge variant={poll.status === 'live' ? 'default' : 'outline'}>{poll.status || (poll.isPublished ? 'live' : 'draft')}</Badge>
+                  {poll.status === 'live' && (
                     <button onClick={() => copyLink(poll.shareId)} className="text-xs text-primary hover:underline" title="Copy share link">
                       /p/{poll.shareId}
                     </button>
                   )}
                   {poll.expiresAt && <span className="text-xs text-muted-foreground">Expires {new Date(poll.expiresAt).toLocaleDateString()}</span>}
+                  {poll.scheduledAt && <span className="text-xs text-muted-foreground">Starts {new Date(poll.scheduledAt).toLocaleString()}</span>}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => togglePublish(poll)}>
-                  {poll.isPublished ? 'Unpublish' : 'Publish'}
+                <Button variant="outline" size="sm" onClick={() => togglePublish(poll)} disabled={poll.status === 'ended'}>
+                  {poll.status === 'live' ? 'Set Draft' : 'Go Live'}
                 </Button>
+                {poll.status === 'live' && <Button variant="destructive" size="sm" onClick={() => endPoll(poll)}>End Poll</Button>}
                 <Button asChild variant="secondary" size="sm">
-                  <Link to="/polls/$id/results" params={{ id: poll.id }}>Results</Link>
+                  <Link to="/polls/$id/results" params={{ id: poll.id }}>Live Results</Link>
                 </Button>
                 <Button asChild variant="secondary" size="sm">
                   <Link to="/polls/$id/analytics" params={{ id: poll.id }}>Analytics</Link>

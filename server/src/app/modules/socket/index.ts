@@ -3,14 +3,39 @@ import { Server } from "socket.io";
 
 let io: Server;
 
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export function initSocket(httpServer: HttpServer) {
   io = new Server(httpServer, {
-    cors: { origin: process.env.CORS_ORIGIN || "http://localhost:5173", credentials: true },
+    cors: { origin: allowedOrigins, credentials: true },
   });
 
   io.on("connection", (socket) => {
-    socket.on("poll:join", (pollId: string) => {
+    async function emitParticipantCount(pollId: string) {
+      const count = (await io.in(`poll:${pollId}`).fetchSockets()).length;
+      io.to(`poll:${pollId}`).emit("participant:count", { pollId, count });
+    }
+
+    socket.on("poll:join", async (pollId: string) => {
       socket.join(`poll:${pollId}`);
+      await emitParticipantCount(pollId);
+    });
+
+    socket.on("poll:leave", async (pollId: string) => {
+      socket.leave(`poll:${pollId}`);
+      await emitParticipantCount(pollId);
+    });
+
+    socket.on("disconnecting", () => {
+      const pollIds = [...socket.rooms]
+        .filter((room) => room.startsWith("poll:"))
+        .map((room) => room.slice("poll:".length));
+      setTimeout(() => {
+        pollIds.forEach((pollId) => void emitParticipantCount(pollId));
+      }, 0);
     });
   });
 

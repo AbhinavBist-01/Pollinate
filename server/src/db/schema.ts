@@ -35,6 +35,10 @@ export const pollsTable = pgTable(
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
     shareId: varchar("share_id", { length: 21 }).notNull().unique(),
+    status: varchar("status", { length: 20 }).notNull().default("draft"),
+    scheduledAt: timestamp("scheduled_at"),
+    endedAt: timestamp("ended_at"),
+    voteLimitPerSession: integer("vote_limit_per_session").notNull().default(1),
     expiresAt: timestamp("expires_at"),
     isPublished: boolean("is_published").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -77,6 +81,7 @@ export const optionsTable = pgTable(
       .references(() => questionsTable.id, { onDelete: "cascade" }),
     text: varchar("text", { length: 255 }).notNull(),
     order: integer("order").notNull().default(0),
+    isCorrect: boolean("is_correct").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
     (table) => ({
@@ -92,11 +97,14 @@ export const responsesTable = pgTable(
       .notNull()
       .references(() => pollsTable.id, { onDelete: "cascade" }),
     respondentId: uuid("respondent_id"),
+    respondentName: varchar("respondent_name", { length: 255 }),
+    voterKey: varchar("voter_key", { length: 255 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
     pollIdIdx: index("responses_poll_id_idx").on(table.pollId),
     respondentIdIdx: index("respondent_id_idx").on(table.respondentId),
+    voterKeyIdx: index("responses_voter_key_idx").on(table.voterKey),
   }),
 );
 

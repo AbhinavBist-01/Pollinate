@@ -34,6 +34,22 @@ export async function getResults(req: Request, res: Response) {
         .orderBy(optionsTable.order)
     : [];
 
+  const scoreableQuestions = questions.filter((q) => q.type !== "text");
+  const correctOptionIdsByQuestion = new Map<string, Set<string>>();
+  for (const q of scoreableQuestions) {
+    correctOptionIdsByQuestion.set(
+      q.id,
+      new Set(
+        allOptions
+          .filter((o) => o.questionId === q.id && o.isCorrect)
+          .map((o) => o.id),
+      ),
+    );
+  }
+  const scoredQuestionIds = scoreableQuestions
+    .filter((q) => (correctOptionIdsByQuestion.get(q.id)?.size ?? 0) > 0)
+    .map((q) => q.id);
+
   const totalResponses = Number(
     (
       await db
@@ -55,6 +71,7 @@ export async function getResults(req: Request, res: Response) {
           questionText: q.text,
           type: q.type,
           answers: textAnswers.map((a) => a.value).filter(Boolean),
+          totalVotes: textAnswers.filter((a) => Boolean(a.value)).length,
         };
       }
 
@@ -73,7 +90,7 @@ export async function getResults(req: Request, res: Response) {
         .map((o) => ({
           optionId: o.id,
           text: o.text,
-          count: countMap.get(o.id) ?? 0,
+          count: Number(countMap.get(o.id) ?? 0),
         }));
 
       const sorted = [...opts].sort((a, b) => b.count - a.count);
@@ -92,9 +109,83 @@ export async function getResults(req: Request, res: Response) {
     }),
   );
 
+  const responses = await db
+    .select({
+      id: responsesTable.id,
+      respondentName: responsesTable.respondentName,
+      createdAt: responsesTable.createdAt,
+    })
+    .from(responsesTable)
+    .where(eq(responsesTable.pollId, poll.id))
+    .orderBy(desc(responsesTable.createdAt));
+
+  const responseIds = responses.map((response) => response.id);
+  const allAnswers = responseIds.length
+    ? await db
+        .select({
+          responseId: answersTable.responseId,
+          questionId: answersTable.questionId,
+          optionId: answersTable.optionId,
+        })
+        .from(answersTable)
+        .where(inArray(answersTable.responseId, responseIds))
+    : [];
+
+  const answersByResponseQuestion = new Map<string, Set<string>>();
+  for (const answer of allAnswers) {
+    if (!answer.optionId) continue;
+    const key = `${answer.responseId}:${answer.questionId}`;
+    const selected = answersByResponseQuestion.get(key) ?? new Set<string>();
+    selected.add(answer.optionId);
+    answersByResponseQuestion.set(key, selected);
+  }
+
+  const leaderboard = responses
+    .map((response, index) => {
+      let correctAnswers = 0;
+      let answeredQuestions = 0;
+
+      for (const questionId of scoredQuestionIds) {
+        const correct = correctOptionIdsByQuestion.get(questionId) ?? new Set<string>();
+        const selected = answersByResponseQuestion.get(`${response.id}:${questionId}`) ?? new Set<string>();
+        if (selected.size > 0) answeredQuestions += 1;
+        const isCorrect =
+          correct.size > 0 &&
+          selected.size === correct.size &&
+          [...correct].every((optionId) => selected.has(optionId));
+        if (isCorrect) correctAnswers += 1;
+      }
+
+      return {
+        responseId: response.id,
+        respondentName: response.respondentName || `Responder ${responses.length - index}`,
+        correctAnswers,
+        answeredQuestions,
+        totalScoreableQuestions: scoredQuestionIds.length,
+        scorePercent: scoredQuestionIds.length
+          ? Math.round((correctAnswers / scoredQuestionIds.length) * 100)
+          : 0,
+        submittedAt: response.createdAt,
+      };
+    })
+    .sort((a, b) => {
+      if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+      if (b.scorePercent !== a.scorePercent) return b.scorePercent - a.scorePercent;
+      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+    })
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
   return res
     .status(200)
-    .json({ pollId: poll.id, title: poll.title, totalResponses, results });
+    .json({
+      pollId: poll.id,
+      title: poll.title,
+      shareId: poll.shareId,
+      totalResponses,
+      scoredQuestionCount: scoredQuestionIds.length,
+      leaderboard,
+      results,
+    });
 }
 
 // Get analytics data for a poll (response trends, completion rates, etc.)`

@@ -11,24 +11,48 @@ import {
 import { SubmitResponseSchema } from "./models.js";
 import { emitResponseNew } from "../socket/index.js";
 
+function getEffectiveStatus(poll: {
+  status?: string;
+  isPublished: boolean;
+  scheduledAt?: Date | null;
+  expiresAt?: Date | null;
+  endedAt?: Date | null;
+}) {
+  const now = new Date();
+  if (poll.endedAt || poll.status === "ended") return "ended";
+  if (poll.expiresAt && poll.expiresAt < now) return "ended";
+  if (poll.scheduledAt && poll.scheduledAt > now) return "scheduled";
+  if (poll.status === "scheduled" && poll.scheduledAt && poll.scheduledAt <= now) return "live";
+  if (poll.status === "live" || poll.isPublished) return "live";
+  return "draft";
+}
+
+function voterKeyFor(req: Request, sessionId?: string) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
+  const ua = req.get("user-agent") || "unknown-agent";
+  return sessionId ? `session:${sessionId}` : `ip:${ip}:${ua.slice(0, 80)}`;
+}
+
 // Get access to Poll with the shared ID
 export async function getPublicPoll(req: Request, res: Response) {
-  const shareIdRaw = req.params.shareId;
-  const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
+  const shareId = req.params.shareId as string | undefined;
   if (!shareId) return res.status(400).json({ message: "Share ID required" });
 
   const [poll] = await db
     .select()
     .from(pollsTable)
-    .where(
-      and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)),
-    );
+    .where(eq(pollsTable.shareId, shareId));
 
-  if (!poll)
-    return res.status(404).json({ message: "Poll not found or not published" });
+  if (!poll) return res.status(404).json({ message: "Poll not found" });
 
-  if (poll.expiresAt && new Date(poll.expiresAt) < new Date()) {
-    return res.status(410).json({ message: "This poll has expired" });
+  const status = getEffectiveStatus(poll);
+  if (status !== "live") {
+    return res.status(status === "scheduled" ? 425 : 410).json({
+      message: status === "scheduled" ? "This poll is scheduled and not live yet" : "This poll is not accepting responses",
+      status,
+      scheduledAt: poll.scheduledAt,
+      endedAt: poll.endedAt,
+    });
   }
 
   const questions = await db
@@ -52,7 +76,10 @@ export async function getPublicPoll(req: Request, res: Response) {
     title: poll.title,
     description: poll.description,
     shareId: poll.shareId,
+    status,
     expiresAt: poll.expiresAt,
+    scheduledAt: poll.scheduledAt,
+    voteLimitPerSession: poll.voteLimitPerSession,
     questions: questions.map((q) => ({
       id: q.id,
       text: q.text,
@@ -69,8 +96,7 @@ export async function getPublicPoll(req: Request, res: Response) {
 
 // Submit a response to a poll using the shared ID
 export async function submitResponse(req: Request, res: Response) {
-  const shareIdRaw = req.params.shareId;
-  const shareId = Array.isArray(shareIdRaw) ? shareIdRaw[0] : shareIdRaw;
+  const shareId = req.params.shareId as string | undefined;
   if (!shareId) return res.status(400).json({ message: "Share ID required" });
 
   const parsed = SubmitResponseSchema.safeParse(req.body);
@@ -83,15 +109,28 @@ export async function submitResponse(req: Request, res: Response) {
   const [poll] = await db
     .select()
     .from(pollsTable)
-    .where(
-      and(eq(pollsTable.shareId, shareId), eq(pollsTable.isPublished, true)),
-    );
+    .where(eq(pollsTable.shareId, shareId));
 
   if (!poll)
-    return res.status(404).json({ message: "Poll not found or not published" });
+    return res.status(404).json({ message: "Poll not found" });
 
-  if (poll.expiresAt && new Date(poll.expiresAt) < new Date()) {
-    return res.status(410).json({ message: "This poll has expired" });
+  const status = getEffectiveStatus(poll);
+  if (status !== "live") {
+    return res.status(status === "scheduled" ? 425 : 410).json({
+      message: status === "scheduled" ? "This poll is scheduled and not live yet" : "This poll is not accepting responses",
+      status,
+    });
+  }
+
+  const voterKey = voterKeyFor(req, parsed.data.voterSessionId);
+  const existingResponses = await db
+    .select({ id: responsesTable.id })
+    .from(responsesTable)
+    .where(and(eq(responsesTable.pollId, poll.id), eq(responsesTable.voterKey, voterKey)));
+  if (existingResponses.length >= poll.voteLimitPerSession) {
+    return res.status(429).json({
+      message: `Vote limit reached for this device/session (${poll.voteLimitPerSession})`,
+    });
   }
 
   const questions = await db
@@ -176,7 +215,11 @@ export async function submitResponse(req: Request, res: Response) {
   const [newResponse] = await db.transaction(async (tx) => {
     const [resp] = await tx
       .insert(responsesTable)
-      .values({ pollId: poll.id })
+      .values({
+        pollId: poll.id,
+        respondentName: parsed.data.respondentName ?? null,
+        voterKey,
+      })
       .returning();
     if (!resp) throw new Error("Failed to create response");
 

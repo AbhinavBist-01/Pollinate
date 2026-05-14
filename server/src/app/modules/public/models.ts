@@ -7,5 +7,7 @@ export const AnswerSchema = z.object({
 });
 
 export const SubmitResponseSchema = z.object({
+  respondentName: z.string().min(1).max(255).optional(),
+  voterSessionId: z.string().min(8).max(120).optional(),
   answers: z.array(AnswerSchema).min(1),
 });

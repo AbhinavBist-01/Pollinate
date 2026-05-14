@@ -17,9 +17,9 @@ import { Route as PollsNewRouteImport } from './routes/polls.new'
 import { Route as PollsIdRouteImport } from './routes/polls.$id'
 import { Route as PShareIdRouteImport } from './routes/p.$shareId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as PollsIdResultsRouteImport } from './routes/polls.$id_.results'
 import { Route as PollsIdEditRouteImport } from './routes/polls.$id_.edit'
-import { Route as PollsIdResultsRouteImport } from './routes/polls.$id.results'
-import { Route as PollsIdAnalyticsRouteImport } from './routes/polls.$id.analytics'
+import { Route as PollsIdAnalyticsRouteImport } from './routes/polls.$id_.analytics'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -61,20 +61,20 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PollsIdResultsRoute = PollsIdResultsRouteImport.update({
+  id: '/polls/$id_/results',
+  path: '/polls/$id/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PollsIdEditRoute = PollsIdEditRouteImport.update({
   id: '/polls/$id_/edit',
   path: '/polls/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PollsIdResultsRoute = PollsIdResultsRouteImport.update({
-  id: '/results',
-  path: '/results',
-  getParentRoute: () => PollsIdRoute,
-} as any)
 const PollsIdAnalyticsRoute = PollsIdAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => PollsIdRoute,
+  id: '/polls/$id_/analytics',
+  path: '/polls/$id/analytics',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -84,11 +84,11 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
-  '/polls/$id': typeof PollsIdRouteWithChildren
+  '/polls/$id': typeof PollsIdRoute
   '/polls/new': typeof PollsNewRoute
   '/polls/$id/analytics': typeof PollsIdAnalyticsRoute
-  '/polls/$id/results': typeof PollsIdResultsRoute
   '/polls/$id/edit': typeof PollsIdEditRoute
+  '/polls/$id/results': typeof PollsIdResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -97,11 +97,11 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
-  '/polls/$id': typeof PollsIdRouteWithChildren
+  '/polls/$id': typeof PollsIdRoute
   '/polls/new': typeof PollsNewRoute
   '/polls/$id/analytics': typeof PollsIdAnalyticsRoute
-  '/polls/$id/results': typeof PollsIdResultsRoute
   '/polls/$id/edit': typeof PollsIdEditRoute
+  '/polls/$id/results': typeof PollsIdResultsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -111,11 +111,11 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/p/$shareId': typeof PShareIdRoute
-  '/polls/$id': typeof PollsIdRouteWithChildren
+  '/polls/$id': typeof PollsIdRoute
   '/polls/new': typeof PollsNewRoute
-  '/polls/$id/analytics': typeof PollsIdAnalyticsRoute
-  '/polls/$id/results': typeof PollsIdResultsRoute
+  '/polls/$id_/analytics': typeof PollsIdAnalyticsRoute
   '/polls/$id_/edit': typeof PollsIdEditRoute
+  '/polls/$id_/results': typeof PollsIdResultsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,8 +129,8 @@ export interface FileRouteTypes {
     | '/polls/$id'
     | '/polls/new'
     | '/polls/$id/analytics'
-    | '/polls/$id/results'
     | '/polls/$id/edit'
+    | '/polls/$id/results'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,8 +142,8 @@ export interface FileRouteTypes {
     | '/polls/$id'
     | '/polls/new'
     | '/polls/$id/analytics'
-    | '/polls/$id/results'
     | '/polls/$id/edit'
+    | '/polls/$id/results'
   id:
     | '__root__'
     | '/'
@@ -154,9 +154,9 @@ export interface FileRouteTypes {
     | '/p/$shareId'
     | '/polls/$id'
     | '/polls/new'
-    | '/polls/$id/analytics'
-    | '/polls/$id/results'
+    | '/polls/$id_/analytics'
     | '/polls/$id_/edit'
+    | '/polls/$id_/results'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -166,9 +166,11 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   PShareIdRoute: typeof PShareIdRoute
-  PollsIdRoute: typeof PollsIdRouteWithChildren
+  PollsIdRoute: typeof PollsIdRoute
   PollsNewRoute: typeof PollsNewRoute
+  PollsIdAnalyticsRoute: typeof PollsIdAnalyticsRoute
   PollsIdEditRoute: typeof PollsIdEditRoute
+  PollsIdResultsRoute: typeof PollsIdResultsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -229,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/polls/$id_/results': {
+      id: '/polls/$id_/results'
+      path: '/polls/$id/results'
+      fullPath: '/polls/$id/results'
+      preLoaderRoute: typeof PollsIdResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/polls/$id_/edit': {
       id: '/polls/$id_/edit'
       path: '/polls/$id/edit'
@@ -236,35 +245,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PollsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/polls/$id/results': {
-      id: '/polls/$id/results'
-      path: '/results'
-      fullPath: '/polls/$id/results'
-      preLoaderRoute: typeof PollsIdResultsRouteImport
-      parentRoute: typeof PollsIdRoute
-    }
-    '/polls/$id/analytics': {
-      id: '/polls/$id/analytics'
-      path: '/analytics'
+    '/polls/$id_/analytics': {
+      id: '/polls/$id_/analytics'
+      path: '/polls/$id/analytics'
       fullPath: '/polls/$id/analytics'
       preLoaderRoute: typeof PollsIdAnalyticsRouteImport
-      parentRoute: typeof PollsIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface PollsIdRouteChildren {
-  PollsIdAnalyticsRoute: typeof PollsIdAnalyticsRoute
-  PollsIdResultsRoute: typeof PollsIdResultsRoute
-}
-
-const PollsIdRouteChildren: PollsIdRouteChildren = {
-  PollsIdAnalyticsRoute: PollsIdAnalyticsRoute,
-  PollsIdResultsRoute: PollsIdResultsRoute,
-}
-
-const PollsIdRouteWithChildren =
-  PollsIdRoute._addFileChildren(PollsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -273,9 +262,11 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   PShareIdRoute: PShareIdRoute,
-  PollsIdRoute: PollsIdRouteWithChildren,
+  PollsIdRoute: PollsIdRoute,
   PollsNewRoute: PollsNewRoute,
+  PollsIdAnalyticsRoute: PollsIdAnalyticsRoute,
   PollsIdEditRoute: PollsIdEditRoute,
+  PollsIdResultsRoute: PollsIdResultsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

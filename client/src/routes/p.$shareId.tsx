@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api from '../lib/api'
+import { joinPollRoom, leavePollRoom, offParticipantCount, onParticipantCount, socket } from '../lib/socket'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent } from '#/components/ui/card'
+import { Input } from '#/components/ui/input'
 import { Textarea } from '#/components/ui/textarea'
 
 export const Route = createFileRoute('/p/$shareId')({ component: PublicResponse })
@@ -13,13 +15,30 @@ function PublicResponse() {
   const [answers, setAnswers] = useState<Record<string, any[]>>({})
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [respondentName, setRespondentName] = useState('')
+  const [hasStarted, setHasStarted] = useState(false)
+  const [participantCount, setParticipantCount] = useState(0)
   const [currentIdx, setCurrentIdx] = useState(0)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    api.get(`/api/public/polls/${shareId}`).then((r) => setPoll(r.data)).catch(() => setError('Poll not found or expired'))
+    api.get(`/api/public/polls/${shareId}`).then((r) => setPoll(r.data)).catch((err) => setError(err.response?.data?.message || 'Poll not found or expired'))
   }, [shareId])
+
+  useEffect(() => {
+    if (!poll?.id) return
+    if (!socket.connected) socket.connect()
+    joinPollRoom(poll.id)
+    const handler = (event: { pollId: string; count: number }) => {
+      if (event.pollId === poll.id) setParticipantCount(event.count)
+    }
+    onParticipantCount(handler)
+    return () => {
+      offParticipantCount(handler)
+      leavePollRoom(poll.id)
+    }
+  }, [poll?.id])
 
   const questions = poll?.questions ?? []
   const current = questions[currentIdx]
@@ -70,11 +89,20 @@ function PublicResponse() {
   async function handleSubmit() {
     const allAnswers = Object.values(answers).flat().filter(Boolean)
     try {
-      await api.post(`/api/public/polls/${shareId}/respond`, { answers: allAnswers })
+      await api.post(`/api/public/polls/${shareId}/respond`, { respondentName, voterSessionId: getVoterSessionId(), answers: allAnswers })
       setSubmitted(true)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to submit')
     }
+  }
+
+  function getVoterSessionId() {
+    const key = `pollinate:voter:${shareId}`
+    const existing = window.localStorage.getItem(key)
+    if (existing) return existing
+    const next = crypto.randomUUID()
+    window.localStorage.setItem(key, next)
+    return next
   }
 
   if (error) return <div className="grid min-h-screen place-items-center"><p className="text-primary">{error}</p></div>
@@ -91,12 +119,36 @@ function PublicResponse() {
   )
   if (!poll) return <p className="py-20 text-center text-muted-foreground">Loading...</p>
 
+  if (!hasStarted) {
+    return (
+      <div className="grid min-h-screen place-items-center px-6">
+        <Card className="w-full max-w-md border-white/10 bg-card/90">
+          <CardContent className="space-y-5 p-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Pollinate response</p>
+              <h1 className="mt-2 text-2xl font-black text-foreground">{poll.title}</h1>
+              {poll.description && <p className="mt-2 text-sm text-muted-foreground">{poll.description}</p>}
+              <p className="mt-3 text-xs text-muted-foreground">{participantCount} participant{participantCount !== 1 ? 's' : ''} online</p>
+            </div>
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground/80">Your name</span>
+              <Input value={respondentName} onChange={(e) => setRespondentName(e.target.value)} placeholder="Enter your name for the leaderboard" required />
+            </label>
+            <Button className="w-full" size="lg" onClick={() => setHasStarted(true)} disabled={!respondentName.trim()}>
+              Start poll
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       <div className="border-b border-white/10 bg-card/80 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <h1 className="truncate text-lg font-black text-foreground">{poll.title}</h1>
-          <span className="text-sm text-primary">{currentIdx + 1}/{questions.length}</span>
+          <span className="text-sm text-primary">{participantCount} online · {currentIdx + 1}/{questions.length}</span>
         </div>
         <div className="mx-auto mt-2 h-1.5 max-w-2xl overflow-hidden rounded-full bg-secondary">
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />

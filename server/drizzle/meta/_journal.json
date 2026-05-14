@@ -29,6 +29,20 @@
       "when": 1778607285907,
       "tag": "0003_sad_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778768108214,
+      "tag": "0004_square_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778769897139,
+      "tag": "0005_right_cloak",
+      "breakpoints": true
     }
   ]
 }

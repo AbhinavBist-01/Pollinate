@@ -9,6 +9,33 @@ import {
 } from "../../../db/schema.js";
 import { CreatePollSchema, UpdatePollSchema } from "./models.js";
 
+function normalizeStatus(input: {
+  status?: string | undefined;
+  isPublished?: boolean | undefined;
+  scheduledAt?: string | Date | null | undefined;
+}) {
+  if (input.status) return input.status;
+  if (input.scheduledAt) return "scheduled";
+  return input.isPublished ? "live" : "draft";
+}
+
+function withEffectiveStatus<T extends {
+  status: string;
+  isPublished: boolean;
+  scheduledAt: Date | null;
+  expiresAt: Date | null;
+  endedAt: Date | null;
+}>(poll: T): T {
+  const now = new Date();
+  if (poll.endedAt || poll.status === "ended" || (poll.expiresAt && poll.expiresAt < now)) {
+    return { ...poll, status: "ended", isPublished: false };
+  }
+  if (poll.status === "scheduled" && poll.scheduledAt && poll.scheduledAt <= now) {
+    return { ...poll, status: "live", isPublished: true };
+  }
+  return poll;
+}
+
 // Create a new poll with questions and options
 export async function createPoll(req: Request, res: Response) {
   const parsed = CreatePollSchema.safeParse(req.body);
@@ -18,7 +45,8 @@ export async function createPoll(req: Request, res: Response) {
       .json({ message: "Validation failed", errors: parsed.error.issues });
   }
 
-  const { title, description, expiresAt, isPublished, questions } = parsed.data;
+  const { title, description, expiresAt, scheduledAt, isPublished, voteLimitPerSession, questions } = parsed.data;
+  const status = normalizeStatus(parsed.data);
   const shareId = nanoid(12);
 
   const [poll] = await db.transaction(async (tx) => {
@@ -29,8 +57,11 @@ export async function createPoll(req: Request, res: Response) {
         title,
         description,
         shareId,
+        status,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        isPublished,
+        voteLimitPerSession,
+        isPublished: status === "live" || isPublished,
       })
       .returning();
     if (!p) throw new Error("Failed to create poll");
@@ -57,6 +88,7 @@ export async function createPoll(req: Request, res: Response) {
               questionId: question.id,
               text: o.text,
               order: o.order ?? 0,
+              isCorrect: o.isCorrect ?? false,
             })
             .returning();
           if (!inserted.length) throw new Error("Failed to create option");
@@ -76,7 +108,7 @@ export async function listPolls(req: Request, res: Response) {
     .from(pollsTable)
     .where(eq(pollsTable.ownerId, req.user!.id))
     .orderBy(pollsTable.createdAt);
-  return res.status(200).json(polls);
+  return res.status(200).json(polls.map(withEffectiveStatus));
 }
 
 // Get a single poll with its questions and options
@@ -109,7 +141,7 @@ export async function getPoll(req: Request, res: Response) {
     : [];
 
   return res.status(200).json({
-    ...poll,
+    ...withEffectiveStatus(poll),
     questions: questions.map((q) => ({
       ...q,
       options: allOptions
@@ -148,8 +180,21 @@ export async function updatePoll(req: Request, res: Response) {
         updateData.expiresAt = pollFields.expiresAt
           ? new Date(pollFields.expiresAt)
           : null;
-      if (pollFields.isPublished !== undefined)
+      if (pollFields.scheduledAt !== undefined)
+        updateData.scheduledAt = pollFields.scheduledAt
+          ? new Date(pollFields.scheduledAt)
+          : null;
+      if (pollFields.voteLimitPerSession !== undefined)
+        updateData.voteLimitPerSession = pollFields.voteLimitPerSession;
+      if (pollFields.status !== undefined) {
+        updateData.status = pollFields.status;
+        updateData.isPublished = pollFields.status === "live";
+        updateData.endedAt = pollFields.status === "ended" ? new Date() : null;
+      } else if (pollFields.isPublished !== undefined) {
         updateData.isPublished = pollFields.isPublished;
+        updateData.status = pollFields.isPublished ? "live" : "draft";
+        updateData.endedAt = pollFields.isPublished ? null : poll.endedAt;
+      }
       await tx
         .update(pollsTable)
         .set(updateData)
@@ -184,6 +229,7 @@ export async function updatePoll(req: Request, res: Response) {
               questionId: question.id,
               text: o.text,
               order: o.order ?? 0,
+              isCorrect: o.isCorrect ?? false,
             });
           }
         }
