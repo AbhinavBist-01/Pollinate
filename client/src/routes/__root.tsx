@@ -1,134 +1,47 @@
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from '../lib/auth'
-import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
-import { Button } from '#/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
-import { Menubar, MenubarMenu, MenubarTrigger } from '#/components/ui/menubar'
 
 export const Route = createRootRoute({
   component: RootLayout,
 })
 
-function LogoMark() {
+function Logo() {
   return (
-    <span className="grid h-10 w-10 place-items-center rounded-lg border border-white/[0.08] bg-black">
-      <img src="/pollinate-mark.png" alt="Pollinate" className="h-8 w-8 object-contain" />
-    </span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="#F59E0B" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4" fill="#FB923C" />
+      <line x1="12" y1="2" x2="12" y2="6" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+      <line x1="12" y1="18" x2="12" y2="22" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+      <line x1="2" y1="12" x2="6" y2="12" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+      <line x1="18" y1="12" x2="22" y2="12" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   )
 }
 
 function Nav() {
   const { user, logout } = useAuth()
   return (
-    <nav className="sticky top-0 z-20 border-b border-white/[0.06] bg-background/90 px-5 py-4 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center gap-4">
-      <Link to="/" className="flex items-center gap-3 text-lg font-bold text-text">
-        <LogoMark />
-        <span>Pollinate</span>
-      </Link>
-      <Menubar className="ml-6 hidden border-white/[0.08] bg-transparent text-text/70 md:flex">
-        <MenubarMenu>
-          <MenubarTrigger asChild>
-            <Link to="/" className="px-3 py-1.5">Home</Link>
-          </MenubarTrigger>
-        </MenubarMenu>
-        {user && (
-          <MenubarMenu>
-            <MenubarTrigger asChild>
-              <Link to="/dashboard" className="px-3 py-1.5">Dashboard</Link>
-            </MenubarTrigger>
-          </MenubarMenu>
+    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 backdrop-blur-xl px-6 py-3.5">
+      <div className="mx-auto flex max-w-5xl items-center gap-6">
+        <Link to="/" className="flex items-center gap-2.5 text-lg font-bold text-honey tracking-tight">
+          <Logo /> Pollinate
+        </Link>
+        <div className="flex-1" />
+        {user ? (
+          <div className="flex items-center gap-5">
+            <Link to="/dashboard" className="text-sm text-white/60 hover:text-white transition-colors">Dashboard</Link>
+            <Link to="/polls/new" className="text-sm text-white/60 hover:text-white transition-colors">Create</Link>
+            <span className="text-sm text-orange/80">{user.name}</span>
+            <button onClick={logout} className="rounded-lg border border-white/10 px-3.5 py-1.5 text-sm text-white/60 hover:text-white hover:border-white/20 transition-colors">Logout</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="text-sm text-white/60 hover:text-white transition-colors">Sign in</Link>
+            <Link to="/register" className="rounded-lg bg-honey px-4 py-1.5 text-sm font-medium text-white hover:bg-honey/90 transition-colors">Get started</Link>
+          </div>
         )}
-      </Menubar>
-      <div className="flex-1" />
-      {user ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="lg" className="gap-3 px-2">
-              <Avatar size="sm">
-                <AvatarImage src="/avatar.jpeg" alt={user.name} />
-                <AvatarFallback>{user.name?.slice(0, 2).toUpperCase() || 'PL'}</AvatarFallback>
-              </Avatar>
-              <span className="hidden text-text/70 sm:inline">{user.name}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 border-white/[0.08] bg-popover">
-            <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/dashboard">Dashboard</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/polls/new">Create poll</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} variant="destructive">Logout</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <>
-          <Button asChild variant="ghost" size="lg">
-            <Link to="/login">Login</Link>
-          </Button>
-          <Button asChild size="lg">
-            <Link to="/register">Register</Link>
-          </Button>
-        </>
-      )}
       </div>
     </nav>
-  )
-}
-
-function Footer() {
-  return (
-    <footer className="mt-16 border-t border-white/[0.06] px-5 py-10">
-      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1fr_auto] md:items-end">
-        <div>
-          <Link to="/" className="inline-flex items-center gap-3 text-lg font-bold text-text">
-            <LogoMark />
-            <span>Pollinate</span>
-          </Link>
-          <p className="mt-4 max-w-md text-sm leading-6 text-text/45">
-            Live polling, public response links, and clean analytics for teams that need fast feedback without noisy dashboards.
-          </p>
-        </div>
-        <div className="grid gap-6 sm:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text/30">Product</p>
-            <div className="mt-3 space-y-2 text-sm text-text/55">
-              <Link to="/dashboard" className="block hover:text-text">Dashboard</Link>
-              <Link to="/polls/new" className="block hover:text-text">Create Poll</Link>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text/30">Access</p>
-            <div className="mt-3 space-y-2 text-sm text-text/55">
-              <Link to="/login" className="block hover:text-text">Login</Link>
-              <Link to="/register" className="block hover:text-text">Register</Link>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text/30">Build</p>
-            <div className="mt-3 space-y-2 text-sm text-text/55">
-              <p>React</p>
-              <p>Express</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-white/[0.06] pt-6 text-xs text-text/35 sm:flex-row sm:items-center sm:justify-between">
-        <p>Created by Abhinav.</p>
-        <p>Pollinate - Live polling for sharper decisions.</p>
-      </div>
-    </footer>
   )
 }
 
@@ -136,10 +49,9 @@ function RootLayout() {
   return (
     <AuthProvider>
       <Nav />
-      <main className="relative mx-auto max-w-7xl p-5 sm:p-8">
+      <main className="mx-auto max-w-5xl p-6">
         <Outlet />
       </main>
-      <Footer />
     </AuthProvider>
   )
 }

@@ -15,15 +15,18 @@ function OAuthCallback() {
     const token = params.get('token')
     if (token) {
       setToken(token)
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/dashboard', replace: true })
     } else {
-      navigate({ to: '/login' })
+      navigate({ to: '/login', replace: true })
     }
   }, [navigate])
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-cream">
-      <p className="text-gray-400">Completing sign in...</p>
+    <div className="flex items-center justify-center min-h-screen bg-charcoal">
+      <div className="flex items-center gap-3">
+        <div className="w-5 h-5 rounded-full border-2 border-honey border-t-transparent animate-spin" />
+        <p className="text-white/50">Completing sign in...</p>
+      </div>
     </div>
   )
 }
