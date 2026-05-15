@@ -24,6 +24,7 @@ interface LeaderboardEntry {
   rank: number;
   respondentName: string;
   correctAnswers: number;
+  answeredQuestions: number;
   totalScoreableQuestions: number;
   scorePercent: number;
 }
@@ -183,10 +184,10 @@ function PublicResponse() {
 
   function getVoterSessionId() {
     const key = `pollinate:voter:${shareId}`;
-    const existing = window.localStorage.getItem(key);
+    const existing = window.sessionStorage.getItem(key);
     if (existing) return existing;
     const next = crypto.randomUUID();
-    window.localStorage.setItem(key, next);
+    window.sessionStorage.setItem(key, next);
     return next;
   }
 
@@ -250,7 +251,7 @@ function PublicResponse() {
                         <p className="text-xs text-muted-foreground">
                           {entry.correctAnswers} /{" "}
                           {entry.totalScoreableQuestions || scoredQuestionCount}{" "}
-                          correct
+                          correct - {entry.answeredQuestions} answered
                         </p>
                       </div>
                       <span className="rounded-full border border-white/10 bg-secondary px-3 py-1 text-sm font-semibold text-foreground">

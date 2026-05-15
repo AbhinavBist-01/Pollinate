@@ -4,9 +4,10 @@ import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import { usersTable } from "../../../db/schema.js";
+import { getJwtSecret } from "../../lib/secrets.js";
 import { RegisterSchema, LoginSchema } from "./models.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "pollinate-jwt-secret-dev";
+const JWT_SECRET = getJwtSecret();
 
 function signToken(user: { id: string; email: string }) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
@@ -84,9 +85,13 @@ export async function me(req: Request, res: Response) {
 }
 
 const CLIENT_URL =
-  process.env.CORS_ORIGIN?.split(",")[0]?.trim() || "http://localhost:3000";
+  process.env.APP_URL ||
+  process.env.CORS_ORIGIN?.split(",")[0]?.trim() ||
+  "http://localhost:3000";
 const API_URL =
-  process.env.API_URL || `http://localhost:${process.env.PORT || 8000}`;
+  process.env.API_URL ||
+  process.env.APP_URL ||
+  `http://localhost:${process.env.PORT || 8000}`;
 
 function googleRedirectUri() {
   return `${API_URL}/api/auth/google/callback`;

@@ -4,9 +4,10 @@ import { Server } from "socket.io";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import { pollsTable } from "../../../db/schema.js";
+import { getJwtSecret } from "../../lib/secrets.js";
 
 let io: Server;
-const JWT_SECRET = process.env.JWT_SECRET || "pollinate-jwt-secret-dev";
+const JWT_SECRET = getJwtSecret();
 
 export interface PollLiveState {
   pollId: string;

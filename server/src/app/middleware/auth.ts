@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../lib/secrets.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "pollinate-jwt-secret-dev";
+const JWT_SECRET = getJwtSecret();
 
 export interface JwtPayload {
   id: string;

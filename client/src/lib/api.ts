@@ -1,7 +1,11 @@
 import axios from "axios";
 
+export const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:8000" : "");
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  baseURL: API_URL,
 });
 
 function canUseStorage() {
@@ -30,8 +34,6 @@ api.interceptors.response.use(
     return Promise.reject(err);
   },
 );
-
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default api;
 

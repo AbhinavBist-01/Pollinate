@@ -32,7 +32,21 @@ function getEffectiveStatus(poll: {
   return "draft";
 }
 
-function voterKeyFor(req: Request, sessionId?: string) {
+function normalizeParticipantName(name?: string) {
+  const normalized = name?.trim().replace(/\s+/g, " ").toLowerCase();
+  return normalized || null;
+}
+
+function voterKeyFor(
+  req: Request,
+  sessionId?: string,
+  respondentName?: string,
+) {
+  const participantName = normalizeParticipantName(respondentName);
+  if (participantName && sessionId)
+    return `participant:${sessionId}:${participantName}`;
+  if (participantName) return `name:${participantName}`;
+
   const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
   const ua = req.get("user-agent") || "unknown-agent";
   return sessionId ? `session:${sessionId}` : `ip:${ip}:${ua.slice(0, 80)}`;
@@ -314,7 +328,11 @@ export async function submitResponse(req: Request, res: Response) {
     }
   }
 
-  const voterKey = voterKeyFor(req, parsed.data.voterSessionId);
+  const voterKey = voterKeyFor(
+    req,
+    parsed.data.voterSessionId,
+    parsed.data.respondentName,
+  );
   const existingResponses = await db
     .select({ id: responsesTable.id })
     .from(responsesTable)
