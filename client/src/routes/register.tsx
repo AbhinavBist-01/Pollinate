@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "../lib/auth";
 import { API_URL } from "../lib/api";
+import { consumeReturnTo } from "../lib/return-to";
 
 export const Route = createFileRoute("/register")({ component: Register });
 
@@ -17,6 +18,11 @@ function Register() {
     e.preventDefault();
     try {
       await register(name, email, password);
+      const returnTo = consumeReturnTo();
+      if (returnTo) {
+        window.location.href = returnTo;
+        return;
+      }
       navigate({ to: "/dashboard" });
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed");

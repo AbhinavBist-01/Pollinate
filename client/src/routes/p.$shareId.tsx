@@ -1,10 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useState, useEffect } from "react";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
 import { Textarea } from "#/components/ui/textarea";
 import api from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { saveReturnTo } from "../lib/return-to";
 import {
   joinPollRoom,
   leavePollRoom,
@@ -33,10 +35,14 @@ interface LeaderboardEntry {
 
 function PublicResponse() {
   const { shareId } = Route.useParams();
+  const { user } = useAuth();
   const [poll, setPoll] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, any[]>>({});
   const [error, setError] = useState("");
   const [respondentName, setRespondentName] = useState("");
+  const [responseMode, setResponseMode] = useState<"anonymous" | "account">(
+    "anonymous",
+  );
   const [hasStarted, setHasStarted] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -174,8 +180,13 @@ function PublicResponse() {
 
     try {
       await api.post(`/api/public/polls/${shareId}/respond`, {
-        respondentName: respondentName.trim() || undefined,
-        voterSessionId: getVoterSessionId(),
+        responseMode,
+        respondentName:
+          responseMode === "anonymous"
+            ? respondentName.trim() || undefined
+            : undefined,
+        voterSessionId:
+          responseMode === "anonymous" ? getVoterSessionId() : undefined,
         answers: currentAnswers,
       });
       setSubmittedQuestionIds((prev) => new Set(prev).add(current.id));
@@ -281,6 +292,8 @@ function PublicResponse() {
   }
 
   if (!hasStarted) {
+    const returnTo = `/p/${shareId}`;
+
     return (
       <div className="grid min-h-screen place-items-center px-6">
         <Card className="w-full max-w-md border-white/10 bg-card/90">
@@ -302,29 +315,80 @@ function PublicResponse() {
                 {participantCount !== 1 ? "s" : ""} online
               </p>
             </div>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-foreground/80">
-                {poll.allowAnonymous ? "Display name (optional)" : "Your name"}
-              </span>
-              <Input
-                value={respondentName}
-                onChange={(e) => setRespondentName(e.target.value)}
-                placeholder={
-                  poll.allowAnonymous
-                    ? "Leave blank to vote anonymously"
-                    : "Enter your name for the leaderboard"
-                }
-                required={!poll.allowAnonymous}
-              />
-            </label>
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => setHasStarted(true)}
-              disabled={!poll.allowAnonymous && !respondentName.trim()}
-            >
-              Join live poll
-            </Button>
+            {poll.allowAnonymous && (
+              <div className="space-y-3 rounded-xl border border-white/10 bg-secondary/30 p-4">
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Join anonymously
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Your account will not be attached to this response.
+                  </p>
+                </div>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-foreground/80">
+                    Display name (optional)
+                  </span>
+                  <Input
+                    value={respondentName}
+                    onChange={(e) => setRespondentName(e.target.value)}
+                    placeholder="Leave blank to vote anonymously"
+                  />
+                </label>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => {
+                    setResponseMode("anonymous");
+                    setHasStarted(true);
+                  }}
+                >
+                  Continue anonymously
+                </Button>
+              </div>
+            )}
+
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/10 p-4">
+              <div>
+                <p className="font-semibold text-foreground">
+                  Join with your Pollinate account
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your name will appear on the leaderboard automatically.
+                </p>
+              </div>
+              {user ? (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setResponseMode("account");
+                    setHasStarted(true);
+                  }}
+                >
+                  Continue as {user.name}
+                </Button>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button asChild className="w-full">
+                    <Link to="/login" onClick={() => saveReturnTo(returnTo)}>
+                      Sign in
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full" variant="outline">
+                    <Link to="/register" onClick={() => saveReturnTo(returnTo)}>
+                      Create account
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {!poll.allowAnonymous && !user && (
+              <p className="text-center text-xs text-muted-foreground">
+                The host requires identity for this poll, so anonymous voting is
+                disabled.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

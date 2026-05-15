@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "../lib/auth";
 import { API_URL } from "../lib/api";
+import { consumeReturnTo } from "../lib/return-to";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { oauthError?: string } =>
@@ -23,6 +24,11 @@ function Login() {
     e.preventDefault();
     try {
       await authLogin(email, password);
+      const returnTo = consumeReturnTo();
+      if (returnTo) {
+        window.location.href = returnTo;
+        return;
+      }
       navigate({ to: "/dashboard" });
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed");

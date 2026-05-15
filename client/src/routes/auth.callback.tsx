@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { setToken } from "../lib/api";
+import { consumeReturnTo } from "../lib/return-to";
 import { useAuthStore } from "#/state/auth-store";
 
 export const Route = createFileRoute("/auth/callback")({
@@ -21,7 +22,14 @@ function OAuthCallback() {
     if (token) {
       setToken(token);
       hydrate()
-        .then(() => navigate({ to: "/dashboard", replace: true }))
+        .then(() => {
+          const returnTo = consumeReturnTo();
+          if (returnTo) {
+            window.location.replace(returnTo);
+            return;
+          }
+          navigate({ to: "/dashboard", replace: true });
+        })
         .catch(() => navigate({ to: "/login", replace: true }));
     } else if (error) {
       navigate({

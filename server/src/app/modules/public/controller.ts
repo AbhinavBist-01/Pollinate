@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import {
+  usersTable,
   pollsTable,
   questionsTable,
   optionsTable,
@@ -10,6 +12,9 @@ import {
 } from "../../../db/schema.js";
 import { SubmitResponseSchema } from "./models.js";
 import { emitResponseNew, getPollLiveState } from "../socket/index.js";
+import { getJwtSecret } from "../../lib/secrets.js";
+
+const JWT_SECRET = getJwtSecret();
 
 function getEffectiveStatus(poll: {
   status?: string;
@@ -41,7 +46,10 @@ function voterKeyFor(
   req: Request,
   sessionId?: string,
   respondentName?: string,
+  respondentId?: string,
 ) {
+  if (respondentId) return `user:${respondentId}`;
+
   const participantName = normalizeParticipantName(respondentName);
   if (participantName && sessionId)
     return `participant:${sessionId}:${participantName}`;
@@ -50,6 +58,32 @@ function voterKeyFor(
   const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
   const ua = req.get("user-agent") || "unknown-agent";
   return sessionId ? `session:${sessionId}` : `ip:${ip}:${ua.slice(0, 80)}`;
+}
+
+async function getOptionalAuthenticatedUser(req: Request) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return null;
+
+  const token = header.split(" ")[1];
+  if (!token) return null;
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { id?: string };
+    if (!payload.id) return null;
+
+    const [user] = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, payload.id));
+
+    return user ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // Get access to Poll with the shared ID
@@ -292,8 +326,23 @@ export async function submitResponse(req: Request, res: Response) {
     });
   }
 
-  if (!poll.allowAnonymous && !parsed.data.respondentName?.trim()) {
-    return res.status(400).json({ message: "Name is required for this poll" });
+  const authenticatedUser =
+    parsed.data.responseMode === "account"
+      ? await getOptionalAuthenticatedUser(req)
+      : null;
+
+  if (parsed.data.responseMode === "account" && !authenticatedUser) {
+    return res.status(401).json({ message: "Please sign in to continue" });
+  }
+
+  if (
+    !poll.allowAnonymous &&
+    !authenticatedUser &&
+    !parsed.data.respondentName?.trim()
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Sign in or enter your name for this poll" });
   }
 
   const questions = await db
@@ -333,7 +382,8 @@ export async function submitResponse(req: Request, res: Response) {
   const voterKey = voterKeyFor(
     req,
     parsed.data.voterSessionId,
-    parsed.data.respondentName,
+    authenticatedUser?.name ?? parsed.data.respondentName,
+    authenticatedUser?.id,
   );
   const existingResponses = await db
     .select({ id: responsesTable.id })
@@ -426,14 +476,20 @@ export async function submitResponse(req: Request, res: Response) {
         .insert(responsesTable)
         .values({
           pollId: poll.id,
-          respondentName: parsed.data.respondentName ?? null,
+          respondentId: authenticatedUser?.id ?? null,
+          respondentName:
+            authenticatedUser?.name ?? parsed.data.respondentName ?? null,
           voterKey,
         })
         .returning();
-    } else if (parsed.data.respondentName?.trim()) {
+    } else if (authenticatedUser || parsed.data.respondentName?.trim()) {
       await tx
         .update(responsesTable)
-        .set({ respondentName: parsed.data.respondentName.trim() })
+        .set({
+          respondentId: authenticatedUser?.id ?? null,
+          respondentName:
+            authenticatedUser?.name ?? parsed.data.respondentName?.trim(),
+        })
         .where(eq(responsesTable.id, resp.id));
     }
 

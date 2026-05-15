@@ -15,6 +15,14 @@ function signToken(user: { id: string; email: string }) {
   });
 }
 
+function normalizePublicUrl(url: string) {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed.replace(/\/$/, "");
+  }
+  return `https://${trimmed}`.replace(/\/$/, "");
+}
+
 export async function register(req: Request, res: Response) {
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success)
@@ -84,14 +92,16 @@ export async function me(req: Request, res: Response) {
   return res.status(200).json(user);
 }
 
-const CLIENT_URL =
+const CLIENT_URL = normalizePublicUrl(
   process.env.APP_URL ||
-  process.env.CORS_ORIGIN?.split(",")[0]?.trim() ||
-  "http://localhost:3000";
-const API_URL =
+    process.env.CORS_ORIGIN?.split(",")[0]?.trim() ||
+    "http://localhost:3000",
+);
+const API_URL = normalizePublicUrl(
   process.env.API_URL ||
-  process.env.APP_URL ||
-  `http://localhost:${process.env.PORT || 8000}`;
+    process.env.APP_URL ||
+    `http://localhost:${process.env.PORT || 8000}`,
+);
 
 function googleRedirectUri() {
   return `${API_URL}/api/auth/google/callback`;
