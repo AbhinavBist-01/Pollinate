@@ -127,7 +127,7 @@ function Nav() {
 
 function Footer() {
   return (
-    <footer className="mt-12 border-t border-white/10 bg-secondary/25 px-6 py-6">
+    <footer className="mt-auto border-t border-white/10 bg-secondary/25 px-6 py-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p>Pollinate</p>
         <p className="text-xs">
@@ -147,11 +147,13 @@ function RootLayout() {
 
   return (
     <AuthProvider>
-      <Nav />
-      <main className="mx-auto max-w-5xl p-6">
-        <Outlet />
-      </main>
-      <Footer />
+      <div className="flex min-h-screen flex-col">
+        <Nav />
+        <main className="mx-auto w-full max-w-5xl flex-1 p-6">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
     </AuthProvider>
   );
 }

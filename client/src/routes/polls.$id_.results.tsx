@@ -73,14 +73,22 @@ function Results() {
                     {entry.respondentName}
                   </p>
                   <p className="text-xs text-white/45">
-                    {entry.correctAnswers} /{" "}
-                    {entry.totalScoreableQuestions ?? data.scoredQuestionCount}{" "}
-                    correct - {entry.answeredQuestions} answered
+                    {entry.score ?? entry.correctAnswers} /{" "}
+                    {entry.totalQuestions ??
+                      entry.totalScoreableQuestions ??
+                      data.scoredQuestionCount}{" "}
+                    correct
                   </p>
                 </div>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-white">
-                  {entry.scorePercent}%
-                </span>
+                <div className="text-right">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-white">
+                    {entry.score ?? entry.correctAnswers} pt
+                    {(entry.score ?? entry.correctAnswers) !== 1 ? "s" : ""}
+                  </span>
+                  <p className="mt-1 text-xs text-white/40">
+                    {entry.scorePercent}%
+                  </p>
+                </div>
               </div>
             ))}
           </div>

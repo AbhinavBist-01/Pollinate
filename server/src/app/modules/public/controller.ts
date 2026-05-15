@@ -221,6 +221,8 @@ export async function getPublicLeaderboard(req: Request, res: Response) {
         responseId: response.id,
         respondentName:
           response.respondentName || `Responder ${responses.length - index}`,
+        score: correctAnswers,
+        totalQuestions: scoredQuestionIds.length,
         correctAnswers,
         answeredQuestions,
         totalScoreableQuestions: scoredQuestionIds.length,

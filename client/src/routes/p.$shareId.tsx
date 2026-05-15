@@ -23,6 +23,8 @@ export const Route = createFileRoute("/p/$shareId")({
 interface LeaderboardEntry {
   rank: number;
   respondentName: string;
+  score: number;
+  totalQuestions: number;
   correctAnswers: number;
   answeredQuestions: number;
   totalScoreableQuestions: number;
@@ -249,14 +251,24 @@ function PublicResponse() {
                           {entry.respondentName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {entry.correctAnswers} /{" "}
-                          {entry.totalScoreableQuestions || scoredQuestionCount}{" "}
-                          correct - {entry.answeredQuestions} answered
+                          {entry.score ?? entry.correctAnswers} /{" "}
+                          {entry.totalQuestions ||
+                            entry.totalScoreableQuestions ||
+                            scoredQuestionCount}{" "}
+                          correct
                         </p>
                       </div>
-                      <span className="rounded-full border border-white/10 bg-secondary px-3 py-1 text-sm font-semibold text-foreground">
-                        {entry.scorePercent}%
-                      </span>
+                      <div className="text-right">
+                        <span className="rounded-full border border-white/10 bg-secondary px-3 py-1 text-sm font-semibold text-foreground">
+                          {entry.score ?? entry.correctAnswers} pt
+                          {(entry.score ?? entry.correctAnswers) !== 1
+                            ? "s"
+                            : ""}
+                        </span>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {entry.scorePercent}%
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
