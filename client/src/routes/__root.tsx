@@ -125,6 +125,19 @@ function Nav() {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="mt-12 border-t border-white/10 bg-secondary/25 px-6 py-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p>Pollinate</p>
+        <p className="text-xs">
+          Live polls, timed quizzes, and real-time results.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 function RootLayout() {
   const initializeTheme = useThemeStore((state) => state.initializeTheme);
 
@@ -138,6 +151,7 @@ function RootLayout() {
       <main className="mx-auto max-w-5xl p-6">
         <Outlet />
       </main>
+      <Footer />
     </AuthProvider>
   );
 }
