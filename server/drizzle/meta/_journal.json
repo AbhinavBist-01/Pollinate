@@ -43,6 +43,13 @@
       "when": 1778769897139,
       "tag": "0005_right_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778819798307,
+      "tag": "0006_striped_arclight",
+      "breakpoints": true
     }
   ]
 }

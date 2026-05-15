@@ -121,7 +121,7 @@ function PublicResponse() {
     const allAnswers = Object.values(answers).flat().filter(Boolean);
     try {
       await api.post(`/api/public/polls/${shareId}/respond`, {
-        respondentName,
+        respondentName: respondentName.trim() || undefined,
         voterSessionId: getVoterSessionId(),
         answers: allAnswers,
       });
@@ -193,20 +193,24 @@ function PublicResponse() {
             </div>
             <label className="block space-y-2">
               <span className="text-sm font-medium text-foreground/80">
-                Your name
+                {poll.allowAnonymous ? "Display name (optional)" : "Your name"}
               </span>
               <Input
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
-                placeholder="Enter your name for the leaderboard"
-                required
+                placeholder={
+                  poll.allowAnonymous
+                    ? "Leave blank to vote anonymously"
+                    : "Enter your name for the leaderboard"
+                }
+                required={!poll.allowAnonymous}
               />
             </label>
             <Button
               className="w-full"
               size="lg"
               onClick={() => setHasStarted(true)}
-              disabled={!respondentName.trim()}
+              disabled={!poll.allowAnonymous && !respondentName.trim()}
             >
               Start poll
             </Button>

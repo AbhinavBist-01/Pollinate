@@ -39,6 +39,7 @@ export const pollsTable = pgTable(
     scheduledAt: timestamp("scheduled_at"),
     endedAt: timestamp("ended_at"),
     voteLimitPerSession: integer("vote_limit_per_session").notNull().default(1),
+    allowAnonymous: boolean("allow_anonymous").notNull().default(true),
     expiresAt: timestamp("expires_at"),
     isPublished: boolean("is_published").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),

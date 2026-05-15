@@ -88,6 +88,7 @@ export async function getPublicPoll(req: Request, res: Response) {
     expiresAt: poll.expiresAt,
     scheduledAt: poll.scheduledAt,
     voteLimitPerSession: poll.voteLimitPerSession,
+    allowAnonymous: poll.allowAnonymous,
     questions: questions.map((q) => ({
       id: q.id,
       text: q.text,
@@ -130,6 +131,10 @@ export async function submitResponse(req: Request, res: Response) {
           : "This poll is not accepting responses",
       status,
     });
+  }
+
+  if (!poll.allowAnonymous && !parsed.data.respondentName?.trim()) {
+    return res.status(400).json({ message: "Name is required for this poll" });
   }
 
   const voterKey = voterKeyFor(req, parsed.data.voterSessionId);

@@ -62,6 +62,7 @@ export async function createPoll(req: Request, res: Response) {
     scheduledAt,
     isPublished,
     voteLimitPerSession,
+    allowAnonymous,
     questions,
   } = parsed.data;
   const status = normalizeStatus(parsed.data);
@@ -79,6 +80,7 @@ export async function createPoll(req: Request, res: Response) {
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         voteLimitPerSession,
+        allowAnonymous,
         isPublished: status === "live" || isPublished,
       })
       .returning();
@@ -204,6 +206,8 @@ export async function updatePoll(req: Request, res: Response) {
           : null;
       if (pollFields.voteLimitPerSession !== undefined)
         updateData.voteLimitPerSession = pollFields.voteLimitPerSession;
+      if (pollFields.allowAnonymous !== undefined)
+        updateData.allowAnonymous = pollFields.allowAnonymous;
       if (pollFields.status !== undefined) {
         updateData.status = pollFields.status;
         updateData.isPublished = pollFields.status === "live";

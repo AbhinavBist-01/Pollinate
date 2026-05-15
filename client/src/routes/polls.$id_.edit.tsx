@@ -5,7 +5,9 @@ import api, { getToken } from "../lib/api";
 interface Option {
   text: string;
   order: number;
+  isCorrect: boolean;
 }
+
 interface Question {
   text: string;
   type: "radio" | "checkbox" | "text";
@@ -13,6 +15,28 @@ interface Question {
   isRequired: boolean;
   timeLimit?: number;
   options: Option[];
+}
+
+const emptyOption = (order: number): Option => ({
+  text: "",
+  order,
+  isCorrect: false,
+});
+
+function normalizeQuestion(q: any): Question {
+  return {
+    text: q.text,
+    type: q.type,
+    order: q.order,
+    isRequired: q.isRequired,
+    timeLimit: q.timeLimit ?? undefined,
+    options:
+      q.options?.map((o: any) => ({
+        text: o.text,
+        order: o.order,
+        isCorrect: Boolean(o.isCorrect),
+      })) ?? [],
+  };
 }
 
 export const Route = createFileRoute("/polls/$id_/edit")({
@@ -27,25 +51,19 @@ function EditPoll() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [allowAnonymous, setAllowAnonymous] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [initialQuestions, setInitialQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get(`/api/polls/${id}`).then((r) => {
+      const loadedQuestions = r.data.questions?.map(normalizeQuestion) ?? [];
       setTitle(r.data.title);
       setDescription(r.data.description || "");
-      setQuestions(
-        r.data.questions?.map((q: any) => ({
-          text: q.text,
-          type: q.type,
-          order: q.order,
-          isRequired: q.isRequired,
-          timeLimit: q.timeLimit ?? undefined,
-          options:
-            q.options?.map((o: any) => ({ text: o.text, order: o.order })) ??
-            [],
-        })) ?? [],
-      );
+      setAllowAnonymous(r.data.allowAnonymous ?? true);
+      setQuestions(loadedQuestions);
+      setInitialQuestions(loadedQuestions);
       setLoading(false);
     });
   }, [id]);
@@ -58,43 +76,58 @@ function EditPoll() {
         type: "radio",
         order: prev.length,
         isRequired: true,
-        options: [{ text: "", order: 0 }],
+        options: [emptyOption(0)],
       },
     ]);
   }
+
   function removeQuestion(i: number) {
     setQuestions((prev) => prev.filter((_, idx) => idx !== i));
   }
+
   function updateQuestion(i: number, field: keyof Question, value: any) {
     setQuestions((prev) => {
       const qs = [...prev];
-      if (field === "type" && (value === "radio" || value === "checkbox"))
+      const current = qs[i];
+
+      if (field === "type" && (value === "radio" || value === "checkbox")) {
+        const options = current.options.length
+          ? current.options
+          : [emptyOption(0)];
+        const firstCorrectIndex = options.findIndex(
+          (option) => option.isCorrect,
+        );
         qs[i] = {
-          ...qs[i],
+          ...current,
           type: value,
-          options: qs[i].options.length
-            ? qs[i].options
-            : [{ text: "", order: 0 }],
+          options: options.map((option, index) => ({
+            ...option,
+            isCorrect:
+              value === "radio"
+                ? index === firstCorrectIndex
+                : option.isCorrect,
+          })),
         };
-      else if (field === "type" && value === "text")
-        qs[i] = { ...qs[i], type: value, options: [] };
-      else qs[i] = { ...qs[i], [field]: value };
+      } else if (field === "type" && value === "text") {
+        qs[i] = { ...current, type: value, options: [] };
+      } else {
+        qs[i] = { ...current, [field]: value };
+      }
       return qs;
     });
   }
+
   function addOption(qi: number) {
     setQuestions((prev) => {
       const qs = [...prev];
       qs[qi] = {
         ...qs[qi],
-        options: [
-          ...qs[qi].options,
-          { text: "", order: qs[qi].options.length },
-        ],
+        options: [...qs[qi].options, emptyOption(qs[qi].options.length)],
       };
       return qs;
     });
   }
+
   function updateOption(qi: number, oi: number, text: string) {
     setQuestions((prev) => {
       const qs = [...prev];
@@ -107,6 +140,27 @@ function EditPoll() {
       return qs;
     });
   }
+
+  function toggleCorrectOption(qi: number, oi: number) {
+    setQuestions((prev) => {
+      const qs = [...prev];
+      const question = qs[qi];
+      qs[qi] = {
+        ...question,
+        options: question.options.map((option, idx) => ({
+          ...option,
+          isCorrect:
+            question.type === "radio"
+              ? idx === oi
+              : idx === oi
+                ? !option.isCorrect
+                : option.isCorrect,
+        })),
+      };
+      return qs;
+    });
+  }
+
   function removeOption(qi: number, oi: number) {
     setQuestions((prev) => {
       const qs = [...prev];
@@ -121,36 +175,23 @@ function EditPoll() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Only send title/description if no questions changed
-    const hasQuestionChanges =
-      JSON.stringify(questions) !==
-      JSON.stringify(
-        (await api.get(`/api/polls/${id}`)).data.questions?.map((q: any) => ({
-          text: q.text,
-          type: q.type,
-          order: q.order,
-          isRequired: q.isRequired,
-          timeLimit: q.timeLimit ?? undefined,
-          options:
-            q.options?.map((o: any) => ({ text: o.text, order: o.order })) ??
-            [],
-        })),
-      );
+    const body: any = { title, description, allowAnonymous };
+    if (JSON.stringify(questions) !== JSON.stringify(initialQuestions)) {
+      body.questions = questions;
+    }
 
-    const body: any = { title, description };
-    if (hasQuestionChanges) body.questions = questions;
     await api.patch(`/api/polls/${id}`, body);
     navigate({ to: "/polls/$id", params: { id } });
   }
 
   if (loading)
-    return <p className="text-center py-20 text-white/30">Loading...</p>;
+    return <p className="py-20 text-center text-white/30">Loading...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">Edit Poll</h1>
+    <div className="mx-auto max-w-3xl">
+      <h1 className="mb-6 text-2xl font-bold text-white">Edit Poll</h1>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
+        <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-6">
           <div className="space-y-1">
             <label className="text-sm font-medium text-white/70">Title</label>
             <input
@@ -172,15 +213,31 @@ function EditPoll() {
               rows={2}
             />
           </div>
+          <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-black/20 p-4">
+            <input
+              type="checkbox"
+              checked={allowAnonymous}
+              onChange={(e) => setAllowAnonymous(e.target.checked)}
+              className="mt-1 rounded border-white/20 bg-white/5 text-honey focus:ring-honey"
+            />
+            <span>
+              <span className="block text-sm font-medium text-white/80">
+                Allow anonymous responses
+              </span>
+              <span className="mt-1 block text-xs text-white/40">
+                Turn this off when voters must enter a name for the leaderboard.
+              </span>
+            </span>
+          </label>
         </div>
 
         {questions.map((q, qi) => (
           <div
             key={qi}
-            className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-3"
+            className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-6"
           >
-            <div className="flex items-start gap-3">
-              <div className="flex-1 space-y-1">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px_96px_112px_auto] lg:items-end">
+              <div className="space-y-1">
                 <label className="text-sm font-medium text-white/70">
                   Question {qi + 1}
                 </label>
@@ -198,15 +255,15 @@ function EditPoll() {
                 <select
                   value={q.type}
                   onChange={(e) => updateQuestion(qi, "type", e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-honey focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white focus:border-honey focus:outline-none"
                 >
                   <option value="radio">Single choice</option>
                   <option value="checkbox">Multiple choice</option>
                   <option value="text">Free text</option>
                 </select>
               </div>
-              <div className="space-y-1 w-20">
-                <label className="text-xs text-white/40">Timer (s)</label>
+              <div className="space-y-1">
+                <label className="text-xs text-white/40">Timer</label>
                 <input
                   type="number"
                   min={0}
@@ -219,11 +276,11 @@ function EditPoll() {
                       e.target.value ? parseInt(e.target.value) : undefined,
                     )
                   }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-2 py-2.5 text-sm text-white focus:border-honey focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white focus:border-honey focus:outline-none"
                   placeholder="Off"
                 />
               </div>
-              <label className="flex items-center gap-1.5 pt-6 text-sm text-white/50">
+              <label className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white/50">
                 <input
                   type="checkbox"
                   checked={q.isRequired}
@@ -238,44 +295,61 @@ function EditPoll() {
                 <button
                   type="button"
                   onClick={() => removeQuestion(qi)}
-                  className="pt-6 text-sm text-red-400/60 hover:text-red-400 transition-colors"
+                  className="h-10 rounded-lg border border-red-400/20 px-3 text-sm text-red-400/70 transition-colors hover:bg-red-400/10 hover:text-red-400"
                 >
                   Remove
                 </button>
               )}
             </div>
+
             {(q.type === "radio" || q.type === "checkbox") && (
-              <div className="ml-2 space-y-2">
+              <div className="space-y-2">
+                <div className="hidden grid-cols-[92px_minmax(0,1fr)_40px] gap-2 px-1 text-xs uppercase tracking-[0.16em] text-white/30 sm:grid">
+                  <span>Answer</span>
+                  <span>Option text</span>
+                  <span />
+                </div>
                 {q.options.map((o, oi) => (
-                  <div key={oi} className="flex items-center gap-2">
-                    {q.type === "radio" ? (
-                      <div className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0" />
-                    ) : (
-                      <div className="w-4 h-4 rounded border-2 border-white/20 shrink-0" />
-                    )}
+                  <div
+                    key={oi}
+                    className="grid gap-2 sm:grid-cols-[92px_minmax(0,1fr)_40px] sm:items-center"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleCorrectOption(qi, oi)}
+                      className={`h-10 rounded-lg border px-3 text-xs font-medium transition-colors ${
+                        o.isCorrect
+                          ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                          : "border-white/10 bg-black/20 text-white/40 hover:text-white/70"
+                      }`}
+                    >
+                      Correct
+                    </button>
                     <input
                       type="text"
                       value={o.text}
                       onChange={(e) => updateOption(qi, oi, e.target.value)}
-                      className="flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-honey focus:outline-none"
+                      className="h-10 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white placeholder-white/30 focus:border-honey focus:outline-none"
                       placeholder={`Option ${oi + 1}`}
                       required
                     />
-                    {q.options.length > 1 && (
+                    {q.options.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => removeOption(qi, oi)}
-                        className="text-sm text-white/30 hover:text-red-400 transition-colors"
+                        className="h-10 rounded-lg border border-white/10 text-sm text-white/30 transition-colors hover:border-red-400/30 hover:text-red-400"
                       >
-                        ✕
+                        X
                       </button>
+                    ) : (
+                      <span />
                     )}
                   </div>
                 ))}
                 <button
                   type="button"
                   onClick={() => addOption(qi)}
-                  className="text-sm text-honey/70 hover:text-honey transition-colors ml-7"
+                  className="text-sm text-honey/70 transition-colors hover:text-honey"
                 >
                   + Add option
                 </button>
@@ -287,19 +361,17 @@ function EditPoll() {
         <button
           type="button"
           onClick={addQuestion}
-          className="w-full rounded-xl border-2 border-dashed border-white/10 py-4 text-sm font-medium text-white/40 hover:border-honey/30 hover:text-honey transition-colors"
+          className="w-full rounded-xl border-2 border-dashed border-white/10 py-4 text-sm font-medium text-white/40 transition-colors hover:border-honey/30 hover:text-honey"
         >
           + Add question
         </button>
 
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            className="flex-1 rounded-xl bg-honey py-3 text-sm font-medium text-white hover:bg-honey/90 transition-colors"
-          >
-            Save changes
-          </button>
-        </div>
+        <button
+          type="submit"
+          className="w-full rounded-xl bg-honey py-3 text-sm font-medium text-white transition-colors hover:bg-honey/90"
+        >
+          Save changes
+        </button>
       </form>
     </div>
   );

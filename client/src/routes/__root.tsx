@@ -1,5 +1,8 @@
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
+import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../lib/auth";
+import { useThemeStore } from "#/state/theme-store";
 
 export const Route = createRootRoute({ component: RootLayout });
 
@@ -56,8 +59,12 @@ function Logo() {
 
 function Nav() {
   const { user, logout } = useAuth();
+  const theme = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const isDark = theme === "dark";
+
   return (
-    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 backdrop-blur-xl px-6 py-3.5">
+    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 px-6 py-3.5 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center gap-6">
         <Link
           to="/"
@@ -66,6 +73,15 @@ function Nav() {
           <Logo /> Pollinate
         </Link>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:border-honey/30 hover:text-honey"
+          aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+          title={`Switch to ${isDark ? "light" : "dark"} theme`}
+        >
+          {isDark ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
         {user ? (
           <div className="flex items-center gap-5">
             <Link
@@ -110,6 +126,12 @@ function Nav() {
 }
 
 function RootLayout() {
+  const initializeTheme = useThemeStore((state) => state.initializeTheme);
+
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
+
   return (
     <AuthProvider>
       <Nav />

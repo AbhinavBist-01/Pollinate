@@ -33,6 +33,7 @@ export const CreatePollSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   status: z.enum(["draft", "live", "ended", "scheduled"]).optional(),
   voteLimitPerSession: z.number().int().min(1).max(10).default(1),
+  allowAnonymous: z.boolean().default(true),
   isPublished: z.boolean().default(false),
   questions: z.array(QuestionSchema).min(1),
 });
@@ -44,6 +45,7 @@ export const UpdatePollSchema = z.object({
   scheduledAt: z.string().datetime().nullable().optional(),
   status: z.enum(["draft", "live", "ended", "scheduled"]).optional(),
   voteLimitPerSession: z.number().int().min(1).max(10).optional(),
+  allowAnonymous: z.boolean().optional(),
   isPublished: z.boolean().optional(),
   questions: z.array(QuestionSchema).min(1).optional(),
 });
