@@ -62,64 +62,61 @@ function Nav() {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const isDark = theme === "dark";
+  const linkClass =
+    "inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white";
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 px-6 py-3.5 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center gap-6">
+    <nav className="sticky top-0 z-20 border-b border-white/10 bg-charcoal/95 px-5 py-3 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
         <Link
           to="/"
-          className="flex items-center gap-2.5 text-lg font-bold text-honey tracking-tight"
+          className="inline-flex h-9 items-center gap-2.5 rounded-lg pr-2 text-lg font-bold tracking-tight text-honey"
         >
           <Logo /> Pollinate
         </Link>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-transparent text-white/70 transition-colors hover:border-honey/30 hover:text-honey"
-          aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
-          title={`Switch to ${isDark ? "light" : "dark"} theme`}
-        >
-          {isDark ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
-        {user ? (
-          <div className="flex items-center gap-5">
-            <Link
-              to="/dashboard"
-              className="text-sm text-white/60 hover:text-white transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/polls/new"
-              className="text-sm text-white/60 hover:text-white transition-colors"
-            >
-              Create
-            </Link>
-            <span className="text-sm text-orange/80">{user.name}</span>
-            <button
-              onClick={logout}
-              className="rounded-lg border border-white/10 px-3.5 py-1.5 text-sm text-white/60 hover:text-white hover:border-white/20 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4">
-            <Link
-              to="/login"
-              className="text-sm text-white/60 hover:text-white transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/register"
-              className="rounded-lg bg-honey px-4 py-1.5 text-sm font-medium text-white hover:bg-honey/90 transition-colors"
-            >
-              Get started
-            </Link>
-          </div>
-        )}
+
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="grid size-9 place-items-center rounded-lg border border-white/10 bg-transparent text-white/70 transition-colors hover:border-honey/30 hover:bg-white/5 hover:text-honey"
+            aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+            title={`Switch to ${isDark ? "light" : "dark"} theme`}
+          >
+            {isDark ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
+          {user ? (
+            <>
+              <Link to="/dashboard" className={linkClass}>
+                Dashboard
+              </Link>
+              <Link to="/polls/new" className={linkClass}>
+                Create
+              </Link>
+              <span className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-orange/80">
+                {user.name}
+              </span>
+              <button
+                onClick={logout}
+                className="inline-flex h-9 items-center rounded-lg border border-white/10 px-3 text-sm font-medium text-white/60 transition-colors hover:border-white/20 hover:bg-white/5 hover:text-white"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className={linkClass}>
+                Sign in
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex h-9 items-center rounded-lg bg-honey px-4 text-sm font-semibold text-white transition-colors hover:bg-honey/90"
+              >
+                Get started
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
@@ -127,12 +124,17 @@ function Nav() {
 
 function Footer() {
   return (
-    <footer className="mt-auto border-t border-white/10 bg-secondary/25 px-6 py-6">
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p>Pollinate</p>
-        <p className="text-xs">
-          Live polls, timed quizzes, and real-time results.
-        </p>
+    <footer className="mt-auto border-t border-white/10 bg-secondary/20 px-5 py-5">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5">
+          <Logo />
+          <span className="font-semibold text-foreground">Pollinate</span>
+        </div>
+        <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:gap-4">
+          <span>Live polls, timed quizzes, and real-time results.</span>
+          <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:block" />
+          <span>Built for fast classroom and event feedback.</span>
+        </div>
       </div>
     </footer>
   );
