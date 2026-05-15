@@ -9,13 +9,7 @@ import { authRouter } from "./app/modules/auth/routes.js";
 import { pollRouter } from "./app/modules/polls/routes.js";
 import { resultsRouter } from "./app/modules/results/routes.js";
 import { publicRouter } from "./app/modules/public/routes.js";
-
-const allowedOrigins = (
-  process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173"
-)
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
+import { isAllowedHttpOrigin } from "./app/lib/origins.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -23,17 +17,35 @@ export function createApp(): Express {
   const app = express();
 
   app.use(
-    cors({
-      origin: (origin, cb) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          cb(null, true);
-          return;
-        }
-        cb(new Error(`CORS blocked origin: ${origin}`));
-      },
-      credentials: true,
+    cors((req, cb) => {
+      cb(null, {
+        origin: (origin, originCb) => {
+          if (isAllowedHttpOrigin(origin, req)) {
+            originCb(null, true);
+            return;
+          }
+          originCb(new Error(`CORS blocked origin: ${origin}`));
+        },
+        credentials: true,
+      });
     }),
   );
+
+  app.use(
+    (
+      err: Error,
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (err.message.startsWith("CORS blocked origin:")) {
+        res.status(403).json({ message: err.message });
+        return;
+      }
+      next(err);
+    },
+  );
+
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json());
   app.use(morgan("dev"));

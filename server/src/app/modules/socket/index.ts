@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import { pollsTable } from "../../../db/schema.js";
 import { getJwtSecret } from "../../lib/secrets.js";
+import { isAllowedSocketOrigin } from "../../lib/origins.js";
 
 let io: Server;
 const JWT_SECRET = getJwtSecret();
@@ -22,13 +23,6 @@ export interface PollLiveState {
 
 const liveStates = new Map<string, PollLiveState>();
 const liveStateTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-const allowedOrigins = (
-  process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173"
-)
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
 
 function isPollLiveState(value: unknown): value is PollLiveState {
   if (!value || typeof value !== "object") return false;
@@ -62,7 +56,16 @@ async function canControlPoll(token: unknown, pollId: string) {
 
 export function initSocket(httpServer: HttpServer) {
   io = new Server(httpServer, {
-    cors: { origin: allowedOrigins, credentials: true },
+    cors: {
+      origin: (origin, cb) => {
+        if (isAllowedSocketOrigin(origin)) {
+          cb(null, true);
+          return;
+        }
+        cb(new Error(`CORS blocked origin: ${origin}`));
+      },
+      credentials: true,
+    },
   });
 
   io.on("connection", (socket) => {
