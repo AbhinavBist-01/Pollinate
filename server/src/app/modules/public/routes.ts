@@ -1,7 +1,11 @@
 import { Router } from "express";
 import type { Router as RouterType } from "express";
 import rateLimit from "express-rate-limit";
-import { getPublicPoll, submitResponse } from "./controller.js";
+import {
+  getPublicLeaderboard,
+  getPublicPoll,
+  submitResponse,
+} from "./controller.js";
 
 export const publicRouter: RouterType = Router();
 const submitLimiter = rateLimit({
@@ -14,5 +18,6 @@ const submitLimiter = rateLimit({
   },
 });
 
+publicRouter.get("/:shareId/leaderboard", getPublicLeaderboard);
 publicRouter.get("/:shareId", getPublicPoll);
 publicRouter.post("/:shareId/respond", submitLimiter, submitResponse);

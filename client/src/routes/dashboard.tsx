@@ -117,6 +117,14 @@ function Dashboard() {
                   {poll.title}
                 </Link>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-1 text-xs text-muted-foreground">
+                    <span
+                      className={`size-2 rounded-full ${poll.status === "live" || poll.isPublished ? "bg-emerald-400" : "bg-red-500"}`}
+                    />
+                    {poll.status === "live" || poll.isPublished
+                      ? "Active"
+                      : "Inactive"}
+                  </span>
                   <Badge
                     variant={poll.status === "live" ? "default" : "outline"}
                   >

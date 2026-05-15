@@ -76,7 +76,7 @@ function Nav() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:border-honey/30 hover:text-honey"
+          className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-transparent text-white/70 transition-colors hover:border-honey/30 hover:text-honey"
           aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
           title={`Switch to ${isDark ? "light" : "dark"} theme`}
         >

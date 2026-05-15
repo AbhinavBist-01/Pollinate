@@ -4,6 +4,15 @@ import api, { getToken } from "../lib/api";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
+import {
+  joinPollRoom,
+  leavePollRoom,
+  offPollLiveState,
+  onPollLiveState,
+  setPollLiveState,
+  socket,
+  type PollLiveState,
+} from "../lib/socket";
 
 export const Route = createFileRoute("/polls/$id")({
   component: PollDetail,
@@ -15,8 +24,26 @@ export const Route = createFileRoute("/polls/$id")({
 function PollDetail() {
   const { id } = Route.useParams();
   const [poll, setPoll] = useState<any>(null);
+  const [liveState, setLiveState] = useState<PollLiveState | null>(null);
   useEffect(() => {
     api.get(`/api/polls/${id}`).then((r) => setPoll(r.data));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (!socket.connected) socket.connect();
+    joinPollRoom(id);
+    const handler = (event: {
+      pollId: string;
+      state: PollLiveState | null;
+    }) => {
+      if (event.pollId === id) setLiveState(event.state);
+    };
+    onPollLiveState(handler);
+    return () => {
+      offPollLiveState(handler);
+      leavePollRoom(id);
+    };
   }, [id]);
 
   async function togglePublish() {
@@ -53,6 +80,53 @@ function PollDetail() {
     navigator.clipboard.writeText(poll.shareId);
   }
   async function endPoll() {
+    await finishQuiz();
+  }
+
+  function openLiveQuestion(questionIndex: number) {
+    const question = poll.questions?.[questionIndex];
+    if (!question) return;
+
+    if (!socket.connected) socket.connect();
+    const duration = question.timeLimit || 30;
+    const startedAt = new Date();
+    const endsAt = new Date(startedAt.getTime() + duration * 1000);
+    setPollLiveState({
+      pollId: id,
+      currentQuestionIndex: questionIndex,
+      currentQuestionId: question.id,
+      isActive: true,
+      acceptingResponses: true,
+      isCompleted: false,
+      startedAt: startedAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+    });
+  }
+
+  function closeCurrentQuestion() {
+    if (!liveState) return;
+    setPollLiveState({
+      ...liveState,
+      acceptingResponses: false,
+      isCompleted: false,
+      endsAt: new Date().toISOString(),
+    });
+  }
+
+  async function finishQuiz() {
+    const currentQuestion =
+      poll?.questions?.[liveState?.currentQuestionIndex ?? 0];
+    setPollLiveState({
+      pollId: id,
+      currentQuestionIndex: liveState?.currentQuestionIndex ?? 0,
+      currentQuestionId:
+        liveState?.currentQuestionId ?? currentQuestion?.id ?? "",
+      isActive: false,
+      acceptingResponses: false,
+      isCompleted: true,
+      startedAt: liveState?.startedAt ?? null,
+      endsAt: new Date().toISOString(),
+    });
     await api.patch(`/api/polls/${id}`, {
       status: "ended",
       isPublished: false,
@@ -79,6 +153,14 @@ function PollDetail() {
     poll.questions?.filter(
       (q: any) => q.type === "radio" || q.type === "checkbox",
     ).length ?? 0;
+  const isPollLive = poll.status === "live" || poll.isPublished;
+  const activeQuestionIndex = liveState?.currentQuestionIndex ?? 0;
+  const activeQuestion = poll.questions?.[activeQuestionIndex];
+  const isAcceptingResponses =
+    Boolean(liveState?.isActive && liveState.acceptingResponses) &&
+    Boolean(
+      liveState?.endsAt && new Date(liveState.endsAt).getTime() > Date.now(),
+    );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -91,6 +173,12 @@ function PollDetail() {
             <Badge variant={poll.status === "live" ? "default" : "outline"}>
               {poll.status || (poll.isPublished ? "live" : "draft")}
             </Badge>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span
+                className={`size-2 rounded-full ${isPollLive ? "bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.9)]" : "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.7)]"}`}
+              />
+              {isPollLive ? "Active" : "Inactive"}
+            </span>
           </div>
           {poll.description && (
             <p className="mt-2 text-primary/80">{poll.description}</p>
@@ -164,6 +252,72 @@ function PollDetail() {
               alt="Poll QR code"
               src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`${window.location.origin}/p/${poll.shareId}`)}`}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {isPollLive && questionCount > 0 && (
+        <Card className="border-white/10 bg-card/90">
+          <CardHeader>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Live audience control</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Everyone watching sees the question you open here.
+                </p>
+              </div>
+              <span
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+                  isAcceptingResponses
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                    : "border-red-400/30 bg-red-400/10 text-red-300"
+                }`}
+              >
+                <span
+                  className={`size-2 rounded-full ${isAcceptingResponses ? "bg-emerald-400" : "bg-red-500"}`}
+                />
+                {isAcceptingResponses ? "Accepting responses" : "Closed"}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border border-white/10 bg-secondary/30 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                Showing question {activeQuestionIndex + 1} of {questionCount}
+              </p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {activeQuestion?.text ?? "No question selected"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Timer: {activeQuestion?.timeLimit || 30}s
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => openLiveQuestion(activeQuestionIndex)}>
+                {liveState?.isActive ? "Reopen Question" : "Start Live"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  openLiveQuestion(
+                    Math.min(activeQuestionIndex + 1, questionCount - 1),
+                  )
+                }
+                disabled={activeQuestionIndex >= questionCount - 1}
+              >
+                Next Question
+              </Button>
+              <Button
+                variant="outline"
+                onClick={closeCurrentQuestion}
+                disabled={!isAcceptingResponses}
+              >
+                Close Responses
+              </Button>
+              <Button variant="destructive" onClick={() => void finishQuiz()}>
+                Finish Quiz
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
