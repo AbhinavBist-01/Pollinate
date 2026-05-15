@@ -28,6 +28,16 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       clearAuth();
       if (typeof window !== "undefined") {
+        if (err.config?.url === "/api/auth/me") {
+          return Promise.reject(err);
+        }
+
+        if (window.location.pathname.startsWith("/p/")) {
+          window.sessionStorage.setItem(
+            "pollinate:returnTo",
+            `${window.location.pathname}${window.location.search}`,
+          );
+        }
         window.location.href = "/login";
       }
     }
